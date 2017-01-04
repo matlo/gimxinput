@@ -1,0 +1,3 @@
+[submodule "gimxhid"]
+	path = gimxhid
+	url = https://github.com/matlo/gimxhid.git

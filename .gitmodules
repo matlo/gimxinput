@@ -1,9 +1,0 @@
-[submodule "gimxhid"]
-	path = gimxhid
-	url = https://github.com/matlo/gimxhid.git
-[submodule "gimxpoll"]
-	path = gimxpoll
-	url = https://github.com/matlo/gimxpoll.git
-[submodule "gimxcommon"]
-	path = gimxcommon
-	url = https://github.com/matlo/gimxcommon.git

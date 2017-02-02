@@ -7,7 +7,7 @@ OBJECTS += $(patsubst %.c,%.o,$(wildcard src/windows/*.c))
 OBJECTS += $(patsubst %.c,%.o,$(wildcard src/sdl/*.c))
 endif
 
-CPPFLAGS += -Iinclude -I.
+CPPFLAGS += -Iinclude -I. -I../
 CFLAGS += -fPIC
 
 LDFLAGS += -L../gimxhid

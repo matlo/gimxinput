@@ -6,67 +6,51 @@
 #include "hidinput.h"
 #include <gimxpoll/include/gpoll.h>
 #include <gimxcommon/include/gerror.h>
+#include <gimxcommon/include/glist.h>
 #include <stdlib.h>
 #include <string.h>
 
 static s_hidinput_driver ** drivers = NULL;
 static unsigned int nb_drivers = 0;
 
-static struct {
+struct hidinput_device {
     s_hidinput_driver * driver;
-    int opened;
+    struct hidinput_device_internal * device;
+    struct ghid_device * hid;
     int read_pending;
     struct {
-        int user;
-        int (* write)(int user, int transfered);
-        int (* close)(int user);
+        void * user;
+        int (* write)(void * user, int transfered);
+        int (* close)(void * user);
     } callbacks;
-} hid_devices[HIDINPUT_MAX_DEVICES];
+    GLIST_LINK(struct hidinput_device)
+};
 
-static inline int hidinput_check_device(int device, const char * file, unsigned int line, const char * func) {
-  if (device < 0 || device >= HIDINPUT_MAX_DEVICES) {
-    fprintf(stderr, "%s:%d %s: invalid device\n", file, line, func);
-    return -1;
-  }
-  if (hid_devices[device].opened == 0) {
-    fprintf(stderr, "%s:%d %s: no such device\n", file, line, func);
-    return -1;
-  }
-  return 0;
-}
-#define HIDINPUT_CHECK_DEVICE(device,retValue) \
-  if(hidinput_check_device(device, __FILE__, __LINE__, __func__) < 0) { \
-    return retValue; \
-  }
+static int close_device(struct hidinput_device * device) {
 
-static void clear_device(int device) {
-
-  memset(hid_devices + device, 0x00, sizeof(*hid_devices));
-}
-
-static int close_device(int device) {
-
-    if (hid_devices[device].opened != 0) {
-        if (hid_devices[device].driver != NULL) {
-            hid_devices[device].driver->close(device);
-        }
+    if (device->driver != NULL && device->device != NULL) {
+        device->driver->close(device->device);
     }
 
-    clear_device(device);
+    GLIST_REMOVE(hidinput_devices, device)
+
+    free(device);
 
     return 0;
 }
 
-static int read_callback(int device, const void * buf, int status) {
+GLIST_INST(struct hidinput_device, hidinput_devices, close_device)
 
-    HIDINPUT_CHECK_DEVICE(device, -1)
+static int read_callback(void * user, const void * buf, int status) {
+
+    struct hidinput_device * device = (struct hidinput_device *) user;
 
     int ret = 0;
 
-    hid_devices[device].read_pending = 0;
+    device->read_pending = 0;
 
     if (status > 0) {
-        if (hid_devices[device].driver->process(device, buf, status) < 0) {
+        if (device->driver->process(device->device, buf, status) < 0) {
           ret = -1;
         }
     }
@@ -74,18 +58,18 @@ static int read_callback(int device, const void * buf, int status) {
     return ret;
 }
 
-static int write_callback(int device, int status) {
+static int write_callback(void * user, int status) {
 
-    HIDINPUT_CHECK_DEVICE(device, -1)
+    struct hidinput_device * device = (struct hidinput_device *) user;
 
-    return hid_devices[device].callbacks.write(hid_devices[device].callbacks.user, status);
+    return device->callbacks.write(device->callbacks.user, status);
 }
 
-static int close_callback(int device) {
+static int close_callback(void * user) {
 
-    HIDINPUT_CHECK_DEVICE(device, -1)
+    struct hidinput_device * device = (struct hidinput_device *) user;
 
-    int ret = hid_devices[device].callbacks.close(hid_devices[device].callbacks.user);
+    int ret = device->callbacks.close(device->callbacks.user);
 
     close_device(device);
 
@@ -138,8 +122,8 @@ int hidinput_init(const GPOLL_INTERFACE * poll_interface, int(*callback)(GE_Even
         drivers[driver]->init(callback);
     }
 
-    struct ghid_device * hid_devs = ghid_enumerate(0x0000, 0x0000);
-    struct ghid_device * current;
+    struct ghid_device_info * hid_devs = ghid_enumerate(0x0000, 0x0000);
+    struct ghid_device_info * current;
     for (current = hid_devs; current != NULL; current = current->next) {
         for (driver = 0; driver < nb_drivers; ++driver) {
             unsigned int id;
@@ -148,19 +132,29 @@ int hidinput_init(const GPOLL_INTERFACE * poll_interface, int(*callback)(GE_Even
                         && drivers[driver]->ids[id].product_id == current->product_id
                         && (drivers[driver]->ids[id].interface_number == -1
                                 || drivers[driver]->ids[id].interface_number == current->interface_number)) {
-                    int hid = drivers[driver]->open(current);
-                    if (hid >= 0) {
-                        hid_devices[hid].opened = 1;
-                        hid_devices[hid].driver = drivers[driver];
-                        GHID_CALLBACKS callbacks = {
-                                .fp_read = read_callback,
-                                .fp_write = write_callback,
-                                .fp_close = close_callback,
-                                .fp_register = poll_interface->fp_register,
-                                .fp_remove = poll_interface->fp_remove,
-                        };
-                        if (ghid_register(hid, hid, &callbacks) < 0) {
-                            close_device(hid);
+                    struct hidinput_device_internal * device_internal = drivers[driver]->open(current);
+                    if (device_internal != NULL) {
+                        struct hidinput_device * device = calloc(1, sizeof(*device));
+                        if (device != NULL) {
+                            device->driver = drivers[driver];
+                            device->device = device_internal;
+                            device->hid = drivers[driver]->get_hid_device(device_internal);
+                            GHID_CALLBACKS callbacks = {
+                                    .fp_read = read_callback,
+                                    .fp_write = write_callback,
+                                    .fp_close = close_callback,
+                                    .fp_register = poll_interface->fp_register,
+                                    .fp_remove = poll_interface->fp_remove,
+                            };
+                            if (ghid_register(device->hid, device, &callbacks) < 0) {
+                                close_device(device);
+                                free(device);
+                            } else {
+                                GLIST_ADD(hidinput_devices, device)
+                            }
+                        } else {
+                            PRINT_ERROR_ALLOC_FAILED("calloc")
+                            drivers[driver]->close(device_internal);
                         }
                     }
                 }
@@ -175,38 +169,41 @@ int hidinput_init(const GPOLL_INTERFACE * poll_interface, int(*callback)(GE_Even
 int hidinput_poll() {
 
     int ret = 0;
-    unsigned int device;
-    for (device = 0; device < sizeof(hid_devices) / sizeof(*hid_devices); ++device) {
-        if (hid_devices[device].opened != 0) {
-            if (hid_devices[device].read_pending == 0) {
-                if (ghid_poll(device) < 0) {
-                    ret = -1;
-                } else {
-                    hid_devices[device].read_pending = 1;
-                }
+    struct hidinput_device * device = GLIST_BEGIN(hidinput_devices);
+    while (device != GLIST_END(hidinput_devices)) {
+        if (device->read_pending == 0) {
+            if (ghid_poll(device->hid) < 0) {
+                ret = -1;
+            } else {
+                device->read_pending = 1;
             }
         }
+        device = device->next;
     }
     return ret;
 }
 
 void hidinput_quit() {
 
-    unsigned int device;
-    for (device = 0; device < sizeof(hid_devices) / sizeof(*hid_devices); ++device) {
-        close_device(device);
-    }
+    GLIST_CLEAN_ALL(hidinput_devices, close_device)
 
     ghid_exit();
 }
 
-int hidinput_set_callbacks(int device, int user, int (* write_cb)(int user, int transfered), int (* close_cb)(int user)) {
+int hidinput_set_callbacks(void * dev, void * user, int (* write_cb)(void * user, int transfered), int (* close_cb)(void * user)) {
 
-    HIDINPUT_CHECK_DEVICE(device, -1)
+    // to be safe, check this device exits
 
-    hid_devices[device].callbacks.user = user;
-    hid_devices[device].callbacks.write = write_cb;
-    hid_devices[device].callbacks.close = close_cb;
+    struct hidinput_device * device = GLIST_BEGIN(hidinput_devices);
+    while (device != GLIST_END(hidinput_devices)) {
+        if (dev == device) {
+            device->callbacks.user = user;
+            device->callbacks.write = write_cb;
+            device->callbacks.close = close_cb;
+            return 0;
+        }
+        device = device->next;
+    }
 
-    return 0;
+    return -1;
 }

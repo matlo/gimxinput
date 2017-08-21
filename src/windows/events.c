@@ -9,34 +9,96 @@
 
 #include <ginput.h>
 #include <gimxpoll/include/gpoll.h>
-#include "rawinput.h"
-#include "../sdl/sdlinput.h"
+#include <gimxcommon/include/gerror.h>
 
-static unsigned char mkb_source;
+static int mkb_source = -1;
+
+struct mkb_source * source_physical = NULL;
+struct mkb_source * source_window = NULL;
+
+struct mkb_source * mkbsource = NULL;
+
+void ev_register_mkb_source(struct mkb_source * source)
+{
+    switch (source->get_src())
+    {
+    case GE_MKB_SOURCE_PHYSICAL:
+        source_physical = source;
+        break;
+    case GE_MKB_SOURCE_WINDOW_SYSTEM:
+        source_window = source;
+        break;
+    }
+}
+
+#define CHECK_MKB_SOURCE(RETVAL) \
+    if (mkbsource == NULL) { \
+        PRINT_ERROR_OTHER("no mkb source available") \
+        return RETVAL; \
+    }
+
+struct js_source * jsource = NULL;
+
+void ev_register_js_source(struct js_source * source)
+{
+    jsource = source;
+}
+
+#define CHECK_JS_SOURCE(RETVAL) \
+    if (jsource == NULL) { \
+        PRINT_ERROR_OTHER("no joystick source available") \
+        return RETVAL; \
+    }
 
 int ev_init(const GPOLL_INTERFACE * poll_interface __attribute__((unused)), unsigned char mkb_src, int(*callback)(GE_Event*))
 {
-  if (callback == NULL) {
-    fprintf(stderr, "callback cannot be NULL\n");
-    return -1;
-  }
-
-  if(sdlinput_init(mkb_src, callback) < 0)
-  {
-    return -1;
-  }
-
   mkb_source = mkb_src;
 
-  if(mkb_source == GE_MKB_SOURCE_PHYSICAL)
+  if (callback == NULL)
   {
-    if(rawinput_init(callback) < 0)
+    PRINT_ERROR_OTHER("callback is NULL")
+    return -1;
+  }
+
+  if (mkb_source == GE_MKB_SOURCE_PHYSICAL)
+  {
+    mkbsource = source_physical;
+    if (mkbsource == NULL)
+    {
+      PRINT_ERROR_OTHER("no physical mkb source available")
+      return -1;
+    }
+    gpoll_set_rawinput_callback(mkbsource->sync_process);
+  }
+  else if (mkb_source == GE_MKB_SOURCE_WINDOW_SYSTEM)
+  {
+    mkbsource = source_window;
+    if (mkbsource == NULL)
+    {
+      PRINT_ERROR_OTHER("no window mkb source available")
+      return -1;
+    }
+  }
+
+  if (mkbsource != NULL)
+  {
+    if (mkbsource->init(poll_interface, callback) < 0)
     {
       return -1;
     }
   }
 
-  gpoll_set_rawinput_callback(rawinput_poll);
+  if (jsource == NULL)
+  {
+    PRINT_ERROR_OTHER("no joystick source available")
+  }
+  else
+  {
+    if (jsource->init(poll_interface, callback) < 0)
+    {
+      return -1;
+    }
+  }
 
   return 0;
 }
@@ -45,22 +107,29 @@ void ev_quit(void)
 {
   ev_grab_input(GE_GRAB_OFF);
 
-  if(mkb_source == GE_MKB_SOURCE_PHYSICAL)
+  if (mkbsource != NULL)
   {
-    rawinput_quit();
+    mkbsource->quit();
   }
 
-  sdlinput_quit();
+  if (jsource != NULL)
+  {
+    jsource->quit();
+  }
 }
 
 const char* ev_joystick_name(int id)
 {
-  return sdlinput_joystick_name(id);
+  CHECK_JS_SOURCE(NULL)
+
+  return jsource->get_name(id);
 }
 
 int ev_joystick_register(const char* name, unsigned int effects, int (*haptic_cb)(const GE_Event * event))
 {
-  return sdlinput_joystick_register(name, effects, haptic_cb);
+  CHECK_JS_SOURCE(-1)
+
+  return jsource->add(name, effects, haptic_cb);
 }
 
 /*
@@ -68,39 +137,23 @@ int ev_joystick_register(const char* name, unsigned int effects, int (*haptic_cb
  */
 void ev_joystick_close(int id)
 {
-  return sdlinput_joystick_close(id);
+  CHECK_JS_SOURCE()
+
+  jsource->close(id);
 }
 
 const char* ev_mouse_name(int id)
 {
-  if(mkb_source == GE_MKB_SOURCE_PHYSICAL)
-  {
-    return rawinput_mouse_name(id);
-  }
-  else if(mkb_source == GE_MKB_SOURCE_WINDOW_SYSTEM)
-  {
-    if(id == 0)
-    {
-      return "Window Events";
-    }
-  }
-  return NULL;
+  CHECK_MKB_SOURCE(NULL)
+
+  return mkbsource->get_mouse_name(id);
 }
 
 const char* ev_keyboard_name(int id)
 {
-  if(mkb_source == GE_MKB_SOURCE_PHYSICAL)
-  {
-    return rawinput_keyboard_name(id);
-  }
-  else if(mkb_source == GE_MKB_SOURCE_WINDOW_SYSTEM)
-  {
-    if(id == 0)
-    {
-      return "Window Events";
-    }
-  }
-  return NULL;
+  CHECK_MKB_SOURCE(NULL)
+
+  return mkbsource->get_keyboard_name(id);
 }
 
 void ev_grab_input(int mode)
@@ -157,20 +210,46 @@ void ev_grab_input(int mode)
 
 void ev_sync_process()
 {
-  return sdlinput_sync_process();
+  if (jsource != NULL && jsource->sync_process != NULL)
+  {
+    jsource->sync_process();
+  }
+  // on Windows mkbsource->sync_process is either the rawinput callback
+  // or NULL (sdlinput)
 }
 
 int ev_joystick_get_haptic(int joystick)
 {
-  return sdlinput_joystick_get_haptic(joystick);
+  CHECK_JS_SOURCE(-1)
+
+  if (jsource->get_haptic != NULL)
+  {
+    return jsource->get_haptic(joystick);
+  }
+
+  return -1;
 }
 
 int ev_joystick_set_haptic(const GE_Event * event)
 {
-  return sdlinput_joystick_set_haptic(event);
+  CHECK_JS_SOURCE(-1)
+
+  if (jsource->set_haptic != NULL)
+  {
+    return jsource->set_haptic(event);
+  }
+  
+  return -1;
 }
 
 int ev_joystick_get_usb_ids(int joystick, unsigned short * vendor, unsigned short * product)
 {
-  return sdlinput_joystick_get_usb_ids(joystick, vendor, product);
+  CHECK_JS_SOURCE(-1)
+
+  if (jsource->get_usb_ids != NULL)
+  {
+    return jsource->get_usb_ids(joystick, vendor, product);
+  }
+
+  return -1;
 }

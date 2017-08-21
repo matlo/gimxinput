@@ -12,6 +12,7 @@
 #endif
 #include <stdlib.h>
 #include <gimxcommon/include/gerror.h>
+#include <gimxcommon/include/glist.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -50,11 +51,31 @@ typedef struct PACKED {
 
 #define HID_REPORT_SIZE sizeof(s_sc_report)
 
-static struct {
-    int opened;
+struct hidinput_device_internal {
+    struct ghid_device * hid;
     int joystick;
     s_sc_report previous;
-} hid_devices[HIDINPUT_MAX_DEVICES];
+    GLIST_LINK(struct hidinput_device_internal)
+};
+
+static int close_device(struct hidinput_device_internal * device) {
+
+    if (device->hid != NULL) {
+        ghid_close(device->hid);
+    }
+
+    if (device->joystick >= 0) {
+        // TODO MLA: remove joystick
+    }
+
+    GLIST_REMOVE(sc_devices, device)
+
+    free(device);
+
+    return 0;
+}
+
+GLIST_INST(struct hidinput_device_internal, sc_devices, close_device)
 
 static s_hidinput_ids ids[] = {
         // check wired controllers first
@@ -68,27 +89,6 @@ static s_hidinput_ids ids[] = {
 
 static int (*event_callback)(GE_Event*) = NULL;
 
-static void clear_device(int device) {
-
-  memset(hid_devices + device, 0x00, sizeof(*hid_devices));
-  hid_devices[device].joystick = -1;
-}
-
-static int close_device(int device) {
-
-    if (hid_devices[device].opened != 0) {
-        ghid_close(device);
-    }
-
-    if (hid_devices[device].joystick >= 0) {
-        // TODO MLA: remove joystick
-    }
-
-    clear_device(device);
-
-    return 0;
-}
-
 static int init(int(*callback)(GE_Event*)) {
 
     event_callback = callback;
@@ -96,20 +96,20 @@ static int init(int(*callback)(GE_Event*)) {
     return 0;
 }
 
-static int process(int device, const void * report, unsigned int size) {
+static int process(struct hidinput_device_internal * device, const void * report, unsigned int size) {
 
     if (size != HID_REPORT_SIZE) {
         return -1;
     }
 
     const s_sc_report * current = report;
-    const s_sc_report * previous = (s_sc_report *)&hid_devices[device].previous;
+    const s_sc_report * previous = (s_sc_report *)&device->previous;
 
     if (current->status != htons(0x013c)) {
         return -1;
     }
 
-    GE_Event button = { .jbutton = { .which = hid_devices[device].joystick } };
+    GE_Event button = { .jbutton = { .which = device->joystick } };
 
     uint8_t inhibit[3] = {};
 
@@ -140,7 +140,7 @@ static int process(int device, const void * report, unsigned int size) {
         }
     }
 
-    GE_Event axis = { .jaxis = { .type = GE_JOYAXISMOTION, .which = hid_devices[device].joystick } };
+    GE_Event axis = { .jaxis = { .type = GE_JOYAXISMOTION, .which = device->joystick } };
 
     // triggers
 
@@ -223,48 +223,55 @@ static int process(int device, const void * report, unsigned int size) {
 
     ++axis.jaxis.axis;
 
-    hid_devices[device].previous = *current;
+    device->previous = *current;
 
     return 0;
 }
 
-static int open_device(const struct ghid_device * dev) {
+static struct hidinput_device_internal * open_device(const struct ghid_device_info * dev) {
 
-    int device = ghid_open_path(dev->path);
-    if (device < 0) {
-        return -1;
+    struct ghid_device * hid = ghid_open_path(dev->path);
+    if (hid == NULL) {
+        return NULL;
     }
 
-    if (hid_devices[device].opened != 0) {
-        ghid_close(device);
-        return -1;
+    struct hidinput_device_internal * device = calloc(1, sizeof(*device));
+    if (device == NULL) {
+        PRINT_ERROR_ALLOC_FAILED("calloc")
+        ghid_close(hid);
+        return NULL;
     }
 
-    hid_devices[device].opened = 1;
-
-    hid_devices[device].joystick = ginput_register_joystick(STEAM_CONTROLLER_NAME, GE_HAPTIC_NONE, NULL);
-    if (hid_devices[device].joystick < 0) {
-        close_device(device);
-        return -1;
+    device->joystick = ginput_register_joystick(STEAM_CONTROLLER_NAME, GE_HAPTIC_NONE, NULL);
+    if (device->joystick < 0) {
+        ghid_close(hid);
+        free(device);
+        return NULL;
     }
+
+    device->hid = hid;
+
+    GLIST_ADD(sc_devices, device)
 
     return device;
+}
+
+static struct ghid_device * get_hid_device(struct hidinput_device_internal * device) {
+
+    return device->hid;
 }
 
 static s_hidinput_driver driver = {
         .ids = ids,
         .init = init,
         .open = open_device,
+        .get_hid_device = get_hid_device,
         .process = process,
         .close = close_device,
 };
 
 void steamcontroller_constructor(void) __attribute__((constructor));
 void steamcontroller_constructor(void) {
-    unsigned int device;
-    for (device = 0; device < sizeof(hid_devices) / sizeof(*hid_devices); ++device) {
-        clear_device(device);
-    }
     if (hidinput_register(&driver) < 0) {
         exit(-1);
     }

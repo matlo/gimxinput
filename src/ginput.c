@@ -88,33 +88,11 @@ static const char* _8BIT_to_UTF8(const char* _8bit)
   return output;
 }
 
-/*
- * \bried Initializes the library.
- *
- * \param mkb_src  GE_MKB_SOURCE_PHYSICAL: use evdev under Linux and raw inputs under Windows.
- *                 GE_MKB_SOURCE_WINDOW_SYSTEM: use X inputs under Linux and the SDL library under Windows.
- * \param callback the callback to process input events (cannot be NULL)
- *
- * \return 1 if successful
- *         0 in case of error
- */
-int ginput_init(const GPOLL_INTERFACE * poll_interface, unsigned char mkb_src, int(*callback)(GE_Event*))
+static void get_joysticks()
 {
-  int i = 0;
-  int j;
   const char* name;
-
-  if (hidinput_init(poll_interface, callback) < 0)
-  {
-      return -1;
-  }
-
-  if (ev_init(poll_interface, mkb_src, callback) < 0)
-  {
-    return -1;
-  }
-
-  i = 0;
+  int j;
+  int i = 0;
   while (i < GE_MAX_DEVICES && (name = ev_joystick_name(i)))
   {
     joysticks[i].type = GE_JS_OTHER; //default value
@@ -173,7 +151,13 @@ int ginput_init(const GPOLL_INTERFACE * poll_interface, unsigned char mkb_src, i
     }
     i++;
   }
-  i = 0;
+}
+
+static void get_mkbs()
+{
+  const char* name;
+  int j;
+  int i = 0;
   while (i < GE_MAX_DEVICES && (name = ev_mouse_name(i)))
   {
     mice[i].name = strdup(_8BIT_to_UTF8(name));
@@ -216,6 +200,36 @@ int ginput_init(const GPOLL_INTERFACE * poll_interface, unsigned char mkb_src, i
       keyboards[i].virtualIndex = 0;
     }
     i++;
+  }
+}
+
+/*
+ * \bried Initializes the library.
+ *
+ * \param mkb_src  GE_MKB_SOURCE_PHYSICAL: use evdev under Linux and raw inputs under Windows.
+ *                 GE_MKB_SOURCE_WINDOW_SYSTEM: use X inputs under Linux and the SDL library under Windows.
+ * \param callback the callback to process input events (cannot be NULL)
+ *
+ * \return 1 if successful
+ *         0 in case of error
+ */
+int ginput_init(const GPOLL_INTERFACE * poll_interface, unsigned char mkb_src, int(*callback)(GE_Event*))
+{
+  if (hidinput_init(poll_interface, callback) < 0)
+  {
+      return -1;
+  }
+
+  if (ev_init(poll_interface, mkb_src, callback) < 0)
+  {
+    return -1;
+  }
+
+  get_joysticks();
+
+  if (mkb_src != GE_MKB_SOURCE_NONE)
+  {
+    get_mkbs();
   }
 
   queue_init();
@@ -554,14 +568,14 @@ int ginput_joystick_set_haptic(const GE_Event * event)
 }
 
 #ifndef WIN32
-int ginput_joystick_get_hid(int id)
+void * ginput_joystick_get_hid(int id)
 {
   return ev_joystick_get_hid(id);
 }
 
-int ginput_joystick_set_hid_callbacks(int hid, int user, int (* hid_write_cb)(int user, int transfered), int (* hid_close_cb)(int user))
+int ginput_joystick_set_hid_callbacks(void * dev, void * user, int (* hid_write_cb)(void * user, int transfered), int (* hid_close_cb)(void * user))
 {
-  return hidinput_set_callbacks(hid, user, hid_write_cb, hid_close_cb);
+  return hidinput_set_callbacks(dev, user, hid_write_cb, hid_close_cb);
 }
 #else
 int ginput_joystick_get_usb_ids(int id, unsigned short * vendor, unsigned short * product)

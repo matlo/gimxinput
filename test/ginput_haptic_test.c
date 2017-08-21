@@ -217,7 +217,7 @@ int main(int argc __attribute__((unused)), char* argv[] __attribute__((unused)))
             .fp_register = REGISTER_FUNCTION,
             .fp_remove = REMOVE_FUNCTION,
     };
-    int timer = gtimer_start(42, PERIOD, &timer_callbacks);
+    struct gtimer * timer = gtimer_start(NULL, PERIOD, &timer_callbacks);
     if (timer < 0) {
         set_done();
     }
@@ -231,7 +231,7 @@ int main(int argc __attribute__((unused)), char* argv[] __attribute__((unused)))
         haptic_task();
     }
 
-    if (timer >= 0) {
+    if (timer != NULL) {
         gtimer_close(timer);
     }
 

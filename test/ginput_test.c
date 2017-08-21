@@ -66,12 +66,14 @@ int main(int argc __attribute__((unused)), char* argv[] __attribute__((unused)))
           .fp_register = REGISTER_FUNCTION,
           .fp_remove = REMOVE_FUNCTION,
   };
-  int timer = gtimer_start(42, PERIOD, &timer_callbacks);
-  if (timer < 0) {
+  struct gtimer * timer = gtimer_start(NULL, PERIOD, &timer_callbacks);
+  if (timer == NULL) {
     set_done();
   }
   
-  ginput_grab();
+  if (mkb_source != GE_MKB_SOURCE_NONE) {
+    ginput_grab();
+  }
 
   while(!is_done())
   {
@@ -82,13 +84,13 @@ int main(int argc __attribute__((unused)), char* argv[] __attribute__((unused)))
     //do something periodically
   }
 
-  if (timer >= 0) {
+  if (timer != NULL) {
     gtimer_close(timer);
   }
 
   ginput_quit();
 
-  printf("Exiting\n");fflush(stdout);
+  printf("Exiting\n");
 
   return 0;
 }

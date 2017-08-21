@@ -8,6 +8,7 @@
 #include <gimxuhid/include/guhid.h>
 #endif
 #include <gimxcommon/include/gerror.h>
+#include <gimxcommon/include/glist.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -32,12 +33,30 @@
 
 #define FF_LG_OUTPUT_REPORT_SIZE 7
 
-static struct {
-    int opened;
+struct hidinput_device_internal {
+    struct ghid_device * hid;
 #ifdef UHID
-    int uhid;
+    struct guhid_device * uhid;
 #endif
-} hid_devices[HIDINPUT_MAX_DEVICES] = {};
+    GLIST_LINK(struct hidinput_device_internal)
+};
+
+static int close_device(struct hidinput_device_internal * device) {
+
+#ifdef UHID
+    if (device->uhid != NULL) {
+        guhid_close(device->uhid);
+    }
+#endif
+
+    GLIST_REMOVE(lgw_devices, device)
+
+    free(device);
+
+    return 0;
+}
+
+GLIST_INST(struct hidinput_device_internal, lgw_devices, close_device)
 
 #define MAKE_IDS(USB_PRODUCT_ID) \
     { .vendor_id = USB_VENDOR_ID_LOGITECH, .product_id = USB_PRODUCT_ID }
@@ -56,41 +75,20 @@ static s_hidinput_ids ids[] = {
         { .vendor_id = 0, .product_id = 0 },
 };
 
-static void clear_device(int device) {
-
-  memset(hid_devices + device, 0x00, sizeof(*hid_devices));
-#ifdef UHID
-  hid_devices[device].uhid = -1;
-#endif
-}
-
-static int close_device(int device) {
-
-#ifdef UHID
-    if (hid_devices[device].uhid >= 0) {
-        guhid_close(hid_devices[device].uhid);
-    }
-#endif
-
-    clear_device(device);
-
-    return 0;
-}
-
 static int init(int(*callback)(GE_Event*) __attribute__((unused))) {
 
     return 0;
 }
 
 #ifdef UHID
-static int process(int device, const void * report, unsigned int size) {
+static int process(struct hidinput_device_internal * device, const void * report, unsigned int size) {
 
     int ret = guhid_write(hid_devices[device].uhid, report, size);
 
     return ret < 0 ? -1 : 0;
 }
 #else
-static int process(int device __attribute__((unused)), const void * report __attribute__((unused)),
+static int process(struct hidinput_device_internal * device __attribute__((unused)), const void * report __attribute__((unused)),
     unsigned int size __attribute__((unused))) {
 
     return 0;
@@ -553,10 +551,10 @@ static s_native_mode * get_native_mode_command(unsigned short product, unsigned 
 }
 
 #ifndef WIN32
-static int send_native_mode(const struct ghid_device * dev, const s_native_mode * native_mode) {
+static int send_native_mode(const struct ghid_device_info * dev, const s_native_mode * native_mode) {
 
-    int device = ghid_open_path(dev->path);
-    if (device < 0) {
+    struct ghid_device * device = ghid_open_path(dev->path);
+    if (device == NULL) {
         return -1;
     }
     int ret = ghid_write_timeout(device, native_mode->command, sizeof(native_mode->command), 1000);
@@ -571,7 +569,7 @@ static int send_native_mode(const struct ghid_device * dev, const s_native_mode 
     return ret;
 }
 
-static int check_native_mode(const struct ghid_device * dev, unsigned short product_id) {
+static int check_native_mode(const struct ghid_device_info * dev, unsigned short product_id) {
 
     // wait up to 5 seconds for the device to enable native mode
     int reset = 0;
@@ -583,8 +581,8 @@ static int check_native_mode(const struct ghid_device * dev, unsigned short prod
             usleep(100000);
         }
         ++cpt;
-        struct ghid_device * hid_devs = ghid_enumerate(USB_VENDOR_ID_LOGITECH, product_id);
-        struct ghid_device * current;
+        struct ghid_device_info * hid_devs = ghid_enumerate(USB_VENDOR_ID_LOGITECH, product_id);
+        struct ghid_device_info * current;
         for (current = hid_devs; current != NULL && reset == 0; current = current->next) {
             if (strcmp(current->path, dev->path) == 0) {
                 printf("native mode enabled for HID device %s (PID=%04x)\n", dev->path, product_id);
@@ -597,7 +595,7 @@ static int check_native_mode(const struct ghid_device * dev, unsigned short prod
     return (reset == 1) ? 0 : -1;
 }
 
-static int set_native_mode(const struct ghid_device * dev, const s_native_mode * native_mode) {
+static int set_native_mode(const struct ghid_device_info * dev, const s_native_mode * native_mode) {
 
     if (native_mode) {
         if (send_native_mode(dev, native_mode) < 0) {
@@ -613,7 +611,7 @@ static int set_native_mode(const struct ghid_device * dev, const s_native_mode *
     return 0;
 }
 #else
-static int set_native_mode(const struct ghid_device * dev __attribute__((unused)), const s_native_mode * native_mode) {
+static int set_native_mode(const struct ghid_device_info * dev __attribute__((unused)), const s_native_mode * native_mode) {
 
     if (native_mode) {
         printf("Found Logitech wheel not in native mode.\n");
@@ -637,31 +635,35 @@ static int set_native_mode(const struct ghid_device * dev __attribute__((unused)
 }
 #endif
 
-static int open_device(const struct ghid_device * dev) {
+static struct hidinput_device_internal *  open_device(const struct ghid_device_info * dev) {
 
     s_native_mode * native_mode = get_native_mode_command(dev->product_id, dev->bcdDevice);
     if (set_native_mode(dev, native_mode) < 0) {
-        return -1;
+        return NULL;
     }
 
 #ifndef WIN32
-    int device = ghid_open_path(dev->path);
-    if (device < 0) {
-        return -1;
+    struct ghid_device * hid = ghid_open_path(dev->path);
+    if (hid == NULL) {
+        return NULL;
     }
 
-    if (hid_devices[device].opened != 0) {
-        ghid_close(device);
-        return -1;
+    struct hidinput_device_internal * device = calloc(1, sizeof(*device));
+    if (device == NULL) {
+        PRINT_ERROR_ALLOC_FAILED("calloc")
+        ghid_close(hid);
+        return NULL;
     }
 
-    hid_devices[device].opened = 1;
+    device->hid = hid;
+
+    GLIST_ADD(lgw_devices, device)
 
 #ifdef UHID
     const s_hid_info * hid_info = ghid_get_hid_info(device);
     if (hid_info == NULL) {
         close_device(device);
-        return -1;
+        return NULL;
     }
 
     s_hid_info fixed_hid_info = *hid_info;
@@ -670,32 +672,34 @@ static int open_device(const struct ghid_device * dev) {
     fix_rdesc(&fixed_hid_info);
 
     hid_devices[device].uhid = guhid_create(&fixed_hid_info, device);
-    if (hid_devices[device].uhid < 0) {
+    if (hid_devices[device].uhid == NULL) {
         close_device(device);
-        return -1;
+        return NULL;
     }
 #endif
 
     return device;
 #else
-    return -1;
+    return NULL;
 #endif
+}
+
+static struct ghid_device * get_hid_device(struct hidinput_device_internal * device) {
+
+    return device->hid;
 }
 
 static s_hidinput_driver driver = {
         .ids = ids,
         .init = init,
         .open = open_device,
+        .get_hid_device = get_hid_device,
         .process = process,
         .close = close_device,
 };
 
 void logitechwheel_constructor(void) __attribute__((constructor));
 void logitechwheel_constructor(void) {
-    unsigned int device;
-    for (device = 0; device < sizeof(hid_devices) / sizeof(*hid_devices); ++device) {
-        clear_device(device);
-    }
     if (hidinput_register(&driver) < 0) {
         exit(-1);
     }

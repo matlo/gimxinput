@@ -28,9 +28,8 @@
      Ryan C. Gordon <icculus@icculus.org>
  */
 
-#include "rawinput.h"
-
 #include "scancodes.h"
+#include "../events.h"
 
 /* WinUser.h won't include rawinput stuff without this... */
 #if (_WIN32_WINNT < 0x0501)
@@ -53,7 +52,7 @@
 
 #define RI_MOUSE_HWHEEL 0x0800
 
-#define MAX_EVENTS 1024
+#define RAWINPUT_MAX_EVENTS 1024
 
 static HWND raw_hwnd = NULL;
 static const char * class_name = RAWINPUT_CLASS_NAME;
@@ -75,6 +74,14 @@ static struct {
 } keyboards[MAX_DEVICES] = {};
 
 static int (*event_callback)(GE_Event*) = NULL;
+
+static int pollres = 0;
+
+#define PROCESS_EVENT(EVT) \
+    { \
+      int res = event_callback(&EVT); \
+      pollres |= res; \
+    }
 
 static void rawinput_handler(const RAWINPUT * raw, UINT align) {
 
@@ -103,12 +110,12 @@ static void rawinput_handler(const RAWINPUT * raw, UINT align) {
           if (mouse->lLastX != 0) {
             event.motion.xrel = mouse->lLastX;
             event.motion.yrel = 0;
-            event_callback(&event);
+            PROCESS_EVENT(event)
           }
           if (mouse->lLastY != 0) {
             event.motion.xrel = 0;
             event.motion.yrel = mouse->lLastY;
-            event_callback(&event);
+            PROCESS_EVENT(event)
           }
       }
 
@@ -117,13 +124,13 @@ static void rawinput_handler(const RAWINPUT * raw, UINT align) {
           event.type = GE_MOUSEBUTTONDOWN; \
           event.button.which = device; \
           event.button.button = BUTTON; \
-          event_callback(&event); \
+          PROCESS_EVENT(event) \
         } \
         if (mouse->usButtonFlags & RI_MOUSE_BUTTON_##ID##_UP) { \
           event.type = GE_MOUSEBUTTONUP; \
           event.button.which = device; \
           event.button.button = BUTTON; \
-          event_callback(&event); \
+          PROCESS_EVENT(event) \
         } \
       }
 
@@ -141,9 +148,9 @@ static void rawinput_handler(const RAWINPUT * raw, UINT align) {
             event.type = GE_MOUSEBUTTONDOWN; \
             event.button.which = device; \
             event.button.button = ((SHORT) mouse->usButtonData) > 0 ? BUTTON_PLUS : BUTTON_MINUS; \
-            event_callback(&event); \
+            PROCESS_EVENT(event) \
             event.type = GE_MOUSEBUTTONUP; \
-            event_callback(&event); \
+            PROCESS_EVENT(event) \
           } \
         } \
       }\
@@ -185,7 +192,7 @@ static void rawinput_handler(const RAWINPUT * raw, UINT align) {
       } else {
         event.key.type = GE_KEYDOWN;
       }
-      event_callback(&event);
+      PROCESS_EVENT(event)
 
     } else {
       return;
@@ -222,7 +229,7 @@ BOOL bIsWow64 = FALSE;
 void wminput_handler_buff()
 {
   UINT i;
-  static RAWINPUT RawInputs[MAX_EVENTS];
+  static RAWINPUT RawInputs[RAWINPUT_MAX_EVENTS];
   UINT cbSize = sizeof(RawInputs);
       
   UINT nInput = GetRawInputBuffer(RawInputs, &cbSize, sizeof(RAWINPUTHEADER));
@@ -504,7 +511,7 @@ static void init_device(const RAWINPUTDEVICELIST * dev) {
   }
 }
 
-int rawinput_init(int (*callback)(GE_Event*)) {
+int rawinput_init(const GPOLL_INTERFACE * poll_interface __attribute__((unused)), int (*callback)(GE_Event*)) {
 
   if (callback == NULL) {
     PRINT_ERROR_OTHER("callback is NULL")
@@ -583,15 +590,15 @@ void rawinput_quit(void) {
   available_mice = 0;
 }
 
-const char * rawinput_mouse_name(unsigned int index) {
-  return (index < available_mice) ? mice[index].name : NULL;
+const char * rawinput_mouse_name(int index) {
+  return ((unsigned int) index < available_mice) ? mice[index].name : NULL;
 }
 
-const char * rawinput_keyboard_name(unsigned int index) {
-  return (index < available_keyboards) ? keyboards[index].name : NULL;
+const char * rawinput_keyboard_name(int index) {
+  return ((unsigned int) index < available_keyboards) ? keyboards[index].name : NULL;
 }
 
-void rawinput_poll() {
+int rawinput_poll() {
 
   MSG Msg;
   
@@ -616,4 +623,30 @@ void rawinput_poll() {
       DispatchMessage(&Msg);
     }
   }
+
+  int ret = pollres;
+
+  pollres = 0;
+  
+  return ret;
+}
+
+static int rawinput_get_src() {
+
+    return GE_MKB_SOURCE_PHYSICAL;
+}
+
+static struct mkb_source rawinput_source = {
+    .init = rawinput_init,
+    .get_src = rawinput_get_src,
+    .grab = NULL,
+    .get_mouse_name = rawinput_mouse_name,
+    .get_keyboard_name = rawinput_keyboard_name,
+    .sync_process = rawinput_poll,
+    .quit = rawinput_quit,
+};
+
+void mkb_constructor() __attribute__((constructor));
+void mkb_constructor() {
+    ev_register_mkb_source(&rawinput_source);
 }

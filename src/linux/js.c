@@ -341,6 +341,7 @@ static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Ev
                     JSINIT_ERROR()
                 }
                 device->id = j_num;
+                indexToJoystick[j_num] = device;
                 device->name = strdup(name);
                 device->fd = fd_js;
                 device->force_feedback.fd = -1;

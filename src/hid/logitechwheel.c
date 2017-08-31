@@ -83,7 +83,7 @@ static int init(int(*callback)(GE_Event*) __attribute__((unused))) {
 #ifdef UHID
 static int process(struct hidinput_device_internal * device, const void * report, unsigned int size) {
 
-    int ret = guhid_write(hid_devices[device].uhid, report, size);
+    int ret = guhid_write(device->uhid, report, size);
 
     return ret < 0 ? -1 : 0;
 }

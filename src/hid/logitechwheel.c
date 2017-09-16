@@ -47,6 +47,9 @@ static int close_device(struct hidinput_device_internal * device) {
     if (device->uhid != NULL) {
         guhid_close(device->uhid);
     }
+    if (device->hid != NULL) {
+        ghid_close(device->hid);
+    }
 #endif
 
     GLIST_REMOVE(lgw_devices, device)
@@ -643,6 +646,7 @@ static struct hidinput_device_internal *  open_device(const struct ghid_device_i
     }
 
 #ifndef WIN32
+#ifdef UHID
     struct ghid_device * hid = ghid_open_path(dev->path);
     if (hid == NULL) {
         return NULL;
@@ -659,8 +663,7 @@ static struct hidinput_device_internal *  open_device(const struct ghid_device_i
 
     GLIST_ADD(lgw_devices, device)
 
-#ifdef UHID
-    const s_hid_info * hid_info = ghid_get_hid_info(device);
+    const s_hid_info * hid_info = ghid_get_hid_info(device->hid);
     if (hid_info == NULL) {
         close_device(device);
         return NULL;
@@ -671,14 +674,15 @@ static struct hidinput_device_internal *  open_device(const struct ghid_device_i
     // Some devices have a bad report descriptor, so fix it just like the kernel does.
     fix_rdesc(&fixed_hid_info);
 
-    hid_devices[device].uhid = guhid_create(&fixed_hid_info, device);
-    if (hid_devices[device].uhid == NULL) {
+    device->uhid = guhid_create(&fixed_hid_info, device->hid);
+    if (device->uhid == NULL) {
         close_device(device);
         return NULL;
     }
-#endif
-
     return device;
+#else
+    return NULL;
+#endif
 #else
     return NULL;
 #endif

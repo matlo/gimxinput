@@ -331,7 +331,7 @@ static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Ev
                 if (ioctl(fd_js, JSIOCGBUTTONS, &buttons) < 0) {
                     JSINIT_ERROR()
                 }
-                uint8_t ax_map[AXMAP_SIZE];
+                uint8_t ax_map[AXMAP_SIZE] = {};
                 if (ioctl(fd_js, JSIOCGAXMAP, &ax_map) < 0) {
                     JSINIT_ERROR()
                 }
@@ -521,10 +521,12 @@ static int js_add(const char * name, unsigned int effects, int (*haptic_cb)(cons
         struct joystick_device * device = calloc(1, sizeof(*device));
         if (device != NULL) {
             index = j_num;
+            indexToJoystick[j_num] = device;
             device->id = index;
             device->name = strdup(name);
             device->force_feedback.effects = effects;
             device->force_feedback.haptic_cb = haptic_cb;
+            GLIST_ADD(js_devices, device)
             ++j_num;
         } else {
             PRINT_ERROR_ALLOC_FAILED("calloc")

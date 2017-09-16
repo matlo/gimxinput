@@ -169,8 +169,8 @@ int hidinput_init(const GPOLL_INTERFACE * poll_interface, int(*callback)(GE_Even
 int hidinput_poll() {
 
     int ret = 0;
-    struct hidinput_device * device = GLIST_BEGIN(hidinput_devices);
-    while (device != GLIST_END(hidinput_devices)) {
+    struct hidinput_device * device;
+    for (device = GLIST_BEGIN(hidinput_devices); device != GLIST_END(hidinput_devices); device = device->next) {
         if (device->read_pending == 0) {
             if (ghid_poll(device->hid) < 0) {
                 ret = -1;
@@ -178,7 +178,6 @@ int hidinput_poll() {
                 device->read_pending = 1;
             }
         }
-        device = device->next;
     }
     return ret;
 }
@@ -194,15 +193,14 @@ int hidinput_set_callbacks(void * dev, void * user, int (* write_cb)(void * user
 
     // to be safe, check this device exits
 
-    struct hidinput_device * device = GLIST_BEGIN(hidinput_devices);
-    while (device != GLIST_END(hidinput_devices)) {
-        if (dev == device) {
+    struct hidinput_device * device;
+    for (device = GLIST_BEGIN(hidinput_devices); device != GLIST_END(hidinput_devices); device = device->next) {
+        if (dev == device->hid) {
             device->callbacks.user = user;
             device->callbacks.write = write_cb;
             device->callbacks.close = close_cb;
             return 0;
         }
-        device = device->next;
     }
 
     return -1;

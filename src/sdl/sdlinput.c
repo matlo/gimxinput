@@ -332,6 +332,8 @@ static void sdlinput_js_quit(void) {
         SDL_Quit();
     }
 
+    js_max_index = 0;
+
     js_init = 0;
 }
 

@@ -203,7 +203,6 @@ static void rawinput_handler(const RAWINPUT * raw, UINT align) {
 static void wminput_handler(WPARAM wParam __attribute__((unused)), LPARAM lParam)
 {
   UINT dwSize = 0;
-  LPBYTE lpb;
 
   GetRawInputData((HRAWINPUT) lParam, RID_INPUT, NULL, &dwSize, sizeof (RAWINPUTHEADER));
 
@@ -211,11 +210,7 @@ static void wminput_handler(WPARAM wParam __attribute__((unused)), LPARAM lParam
     return;
   }
 
-  lpb = (LPBYTE) malloc(dwSize);
-  if (lpb == NULL) {
-      PRINT_ERROR_ALLOC_FAILED("malloc")
-      return;
-  }
+  LPBYTE lpb[dwSize];
 
   if (GetRawInputData((HRAWINPUT) lParam, RID_INPUT, lpb, &dwSize, sizeof (RAWINPUTHEADER)) != dwSize) {
       return;
@@ -413,32 +408,50 @@ static SP_DEVINFO_DATA * get_devinfo_data(const char * instanceId) {
   return NULL;
 }
 
-static char * get_dev_name_by_instance(const char * devinstance) {
+/*
+ * Convert an UTF-16LE string to an UTF-8 string.
+ */
+static char * utf16le_to_utf8(const unsigned char * inbuf, size_t insize)
+{
+  char * outbuf = NULL;
+  int outsize = WideCharToMultiByte(CP_UTF8, 0, (LPCWSTR ) inbuf, insize, NULL, 0, NULL, NULL);
+  if (outsize != 0) {
+      outbuf = (char*) malloc(outsize);
+      if (outbuf != NULL) {
+         int res = WideCharToMultiByte(CP_UTF8, 0, (LPCWSTR ) inbuf, insize, outbuf, outsize, NULL, NULL);
+         if (res == 0) {
+             PRINT_ERROR_GETLASTERROR("WideCharToMultiByte")
+             free(outbuf);
+             outbuf = NULL;
+         }
+      }
+  } else {
+    PRINT_ERROR_GETLASTERROR("WideCharToMultiByte")
+  }
 
-  char * name = NULL;
+  return outbuf;
+}
+
+static char * get_dev_name_by_instance(const char * devinstance) {
 
   SP_DEVINFO_DATA * devdata = get_devinfo_data(devinstance);
   if (devdata != NULL) {
     DWORD size;
-    BOOL result = SetupDiGetDeviceRegistryProperty(hdevinfo, devdata, SPDRP_DEVICEDESC, NULL, NULL, 0, &size);
+    BOOL result = SetupDiGetDeviceRegistryPropertyW(hdevinfo, devdata, SPDRP_DEVICEDESC, NULL, NULL, 0, &size);
     if (result == FALSE && GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
-      name = malloc(size);
-      if (name != NULL) {
-        result = SetupDiGetDeviceRegistryProperty(hdevinfo, devdata, SPDRP_DEVICEDESC, NULL, (PBYTE) name, size, NULL);
-        if (result == FALSE) {
-          PRINT_ERROR_GETLASTERROR("SetupDiGetDeviceRegistryProperty")
-          free(name);
-          name = NULL;
-        }
+      unsigned char desc[size];
+      result = SetupDiGetDeviceRegistryPropertyW(hdevinfo, devdata, SPDRP_DEVICEDESC, NULL, desc, size, NULL);
+      if (result == FALSE) {
+        PRINT_ERROR_GETLASTERROR("SetupDiGetDeviceRegistryProperty")
       } else {
-        PRINT_ERROR_ALLOC_FAILED("malloc")
+        return utf16le_to_utf8(desc, size);
       }
     } else {
       PRINT_ERROR_GETLASTERROR("SetupDiGetDeviceRegistryProperty")
     }
   }
   
-  return name;
+  return NULL;
 }
 
 static void init_device(const RAWINPUTDEVICELIST * dev) {

@@ -7,7 +7,6 @@
 
 #include <string.h>
 #include <stdlib.h>
-#include <iconv.h>
 #include <stdio.h>
 
 #include "conversion.h"
@@ -70,24 +69,6 @@ static GE_MK_Mode mk_mode = GE_MK_MODE_MULTIPLE_INPUTS;
 
 static int initialized = 0;
 
-/*
- * Convert an ISO-8859-1 string to an UTF-8 string.
- * The returned string is hold in a statically allocated buffer that is modified at each call.
- */
-static const char* _8BIT_to_UTF8(const char* _8bit)
-{
-  iconv_t cd;
-  char* input = (char*)_8bit;
-  size_t in = strlen(input) + 1;
-  static char output[256];
-  char* poutput = output;
-  size_t out = sizeof(output);
-  cd = iconv_open ("UTF-8", "ISO-8859-1");
-  iconv(cd, &input, &in, &poutput, &out);
-  iconv_close(cd);
-  return output;
-}
-
 static void get_joysticks()
 {
   const char* name;
@@ -120,7 +101,7 @@ static void get_joysticks()
     }
 #endif
 
-    joysticks[i].name = strdup(_8BIT_to_UTF8(name));
+    joysticks[i].name = strdup(name);
 
     // Go backward and look for a joystick with the same name.
     for (j = i - 1; j >= 0; --j)
@@ -160,7 +141,7 @@ static void get_mkbs()
   int i = 0;
   while (i < GE_MAX_DEVICES && (name = ev_mouse_name(i)))
   {
-    mice[i].name = strdup(_8BIT_to_UTF8(name));
+    mice[i].name = strdup(name);
 
     // Go backward and look for a mouse with the same name.
     for (j = i - 1; j >= 0; --j)
@@ -182,7 +163,7 @@ static void get_mkbs()
   i = 0;
   while (i < GE_MAX_DEVICES && (name = ev_keyboard_name(i)))
   {
-    keyboards[i].name = strdup(_8BIT_to_UTF8(name));
+    keyboards[i].name = strdup(name);
 
     // Go backward and look for a keyboard with the same name.
     for (j = i - 1; j >= 0; --j)

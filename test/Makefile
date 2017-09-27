@@ -1,5 +1,5 @@
-CFLAGS += -s -O3
-CXXFLAGS += -s -O3
+CFLAGS += -O3
+CXXFLAGS += -O3
 
 CPPFLAGS = -I../..
 
@@ -15,7 +15,7 @@ endif
 
 ifeq ($(OS),Windows_NT)
 CPPFLAGS += `sdl2-config --cflags`
-LDLIBS += $(shell sdl2-config --libs) -liconv -lws2_32 -lwinmm -lhid -lsetupapi
+LDLIBS += $(shell sdl2-config --libs) -lws2_32 -lwinmm -lhid -lsetupapi
 LDLIBS:=$(filter-out -mwindows,$(LDLIBS))
 else
 LDLIBS += -lXi -lX11

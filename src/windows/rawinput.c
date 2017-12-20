@@ -549,7 +549,7 @@ int rawinput_init(const GPOLL_INTERFACE * poll_interface __attribute__((unused))
     result = GetRawInputDeviceList(devlist, &count, sizeof(RAWINPUTDEVICELIST));
     if (result != (UINT)-1) {
       unsigned int i;
-      for (i = 0; i < count; i++) {
+      for (i = 0; i < result; i++) { // result may be lower than count!
         init_device(&devlist[i]);
       }
     }

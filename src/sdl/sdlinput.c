@@ -158,7 +158,7 @@ static int js_open(int joystick_index, SDL_GameController ** controller, SDL_Joy
 
     if (SDL_IsGameController(joystick_index)) {
         *controller = SDL_GameControllerOpen(joystick_index);
-        if (controller == NULL) {
+        if (*controller == NULL) {
             PRINT_ERROR_SDL("SDL_GameControllerOpen")
             return -1;
         }
@@ -402,46 +402,34 @@ static int js_close_internal(void * user) {
 
     struct joystick_device * device = (struct joystick_device *) user;
 
-    int closed = 0;
     if (device->name) {
         free(device->name);
-        device->name = NULL;
-        closed = 1;
         --joysticks_registered;
     } else {
         if (device->force_feedback.haptic) {
             SDL_HapticClose(device->force_feedback.haptic);
-            device->force_feedback.haptic = NULL;
-            device->force_feedback.effects = GE_HAPTIC_NONE;
         }
-        if (device->joystick) {
-            SDL_JoystickClose(device->joystick);
-            device->joystick = NULL;
-            free(device->hat_info.joystickHat);
-            device->hat_info.joystickHat = NULL;
-            closed = 1;
-        } else if (device->controller) {
+        if (device->controller) {
             SDL_GameControllerClose(device->controller);
-            device->controller = NULL;
-            closed = 1;
+        } else if (device->joystick) {
+            SDL_JoystickClose(device->joystick);
+            free(device->hat_info.joystickHat);
         }
     }
-    if (closed) {
 
-        indexToJoystick[device->index] = NULL;
-
-        --joysticks_opened;
-
-        // Closing the joystick subsystem also closes SDL's event queue.
-        // Don't close it if mkb_init is set.
-        if (joysticks_opened == joysticks_registered && mkb_init != 0) {
-            SDL_QuitSubSystem(SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC);
-        }
-    }
+    indexToJoystick[device->index] = NULL;
 
     GLIST_REMOVE(sdl_devices, device)
 
     free(device);
+
+    --joysticks_opened;
+
+    // Closing the joystick subsystem also closes SDL's event queue.
+    // Don't close it if mkb_init is set.
+    if (joysticks_opened == joysticks_registered && mkb_init == 0) {
+        SDL_QuitSubSystem(SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC);
+    }
 
     return 0;
 }

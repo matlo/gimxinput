@@ -466,11 +466,10 @@ static void init_device(const RAWINPUTDEVICELIST * dev) {
     return;
   }
 
-  char * buf = (char *) calloc(count + 1, sizeof(char));
-  if (buf == NULL) {
-    PRINT_ERROR_ALLOC_FAILED("calloc")
-    return;
-  }
+  char abuf[count + 1];
+  memset(abuf, 0x00, sizeof(abuf));
+
+  char * buf = abuf;
 
   if (GetRawInputDeviceInfo(dev->hDevice, RIDI_DEVICENAME, buf, &count) == (UINT)-1) {
     PRINT_ERROR_GETLASTERROR("GetRawInputDeviceInfo")

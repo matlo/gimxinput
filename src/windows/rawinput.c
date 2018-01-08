@@ -59,19 +59,22 @@ static const char * class_name = RAWINPUT_CLASS_NAME;
 static const char * win_name = RAWINPUT_WINDOW_NAME;
 static ATOM class_atom = 0;
 
-static unsigned int available_mice = 0;
-static unsigned int available_keyboards = 0;
-
 static struct {
     HANDLE handle;
     char * name;
-} mice[MAX_DEVICES] = {};
+} * mice = NULL;
+
+static unsigned int nb_mice = 0;
 
 static struct {
     HANDLE handle;
     char * name;
     unsigned char * keystates;
-} keyboards[MAX_DEVICES] = {};
+} * keyboards = NULL;
+
+static unsigned int nb_keyboards = 0;
+
+static int registered = 0;
 
 static int (*event_callback)(GE_Event*) = NULL;
 
@@ -94,13 +97,13 @@ static void rawinput_handler(const RAWINPUT * raw, UINT align) {
 
     if (raw->header.dwType == RIM_TYPEMOUSE) {
 
-      for (device = 0; device < available_mice; ++device) {
+      for (device = 0; device < nb_mice; ++device) {
         if (mice[device].handle == header->hDevice) {
           break;
         }
       }
 
-      if (device == available_mice) {
+      if (device == nb_mice) {
         return;
       }
 
@@ -162,13 +165,13 @@ static void rawinput_handler(const RAWINPUT * raw, UINT align) {
 
     } else if(raw->header.dwType == RIM_TYPEKEYBOARD) {
 
-      for (device = 0; device < available_keyboards; device++) {
+      for (device = 0; device < nb_keyboards; device++) {
         if (keyboards[device].handle == header->hDevice) {
           break;
         }
       }
 
-      if (device == available_keyboards) {
+      if (device == nb_keyboards) {
         return;
       }
       
@@ -264,6 +267,40 @@ static LRESULT CALLBACK RawWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lP
     return DefWindowProc(hWnd, Msg, wParam, lParam);
 }
 
+static int register_raw_input(int state) {
+
+    if (registered == state) {
+      return 0;
+    }
+
+    DWORD dwFlags = state ? RIDEV_NOLEGACY : RIDEV_REMOVE;
+    HWND hwndTarget = state ? raw_hwnd : 0;
+
+    RAWINPUTDEVICE rid[] = {
+      {
+        .usUsagePage = HID_USAGE_PAGE_GENERIC,
+        .usUsage = HID_USAGE_GENERIC_MOUSE,
+        .dwFlags = dwFlags,
+        .hwndTarget = hwndTarget
+      },
+      {
+        .usUsagePage = HID_USAGE_PAGE_GENERIC,
+        .usUsage = HID_USAGE_GENERIC_KEYBOARD,
+        .dwFlags = dwFlags,
+        .hwndTarget = hwndTarget
+      }
+    };
+
+    if (RegisterRawInputDevices(rid, sizeof(rid) / sizeof(*rid), sizeof(*rid)) == FALSE) {
+        PRINT_ERROR_GETLASTERROR("RegisterRawInputDevices")
+        return -1;
+    }
+
+    registered = state;
+
+    return 0;
+}
+
 static int init_event_queue(void)
 {
     HANDLE hInstance = GetModuleHandle(NULL);
@@ -289,24 +326,8 @@ static int init_event_queue(void)
       return 0;
     }
 
-    RAWINPUTDEVICE rid[2] = {
-      {
-        .usUsagePage = HID_USAGE_PAGE_GENERIC,
-        .usUsage = 2,
-        .dwFlags = RIDEV_NOLEGACY,
-        .hwndTarget = raw_hwnd
-      },
-      {
-        .usUsagePage = HID_USAGE_PAGE_GENERIC,
-        .usUsage = 6,
-        .dwFlags = RIDEV_NOLEGACY,
-        .hwndTarget = raw_hwnd
-      }
-    };
-    
-    if (RegisterRawInputDevices(rid, 2, sizeof (*rid)) == FALSE) {
-        PRINT_ERROR_GETLASTERROR("RegisterRawInputDevices")
-        return 0;
+    if (register_raw_input(1) < 0) {
+      return 0;
     }
     
     ShowWindow(raw_hwnd, SW_SHOW);
@@ -335,7 +356,7 @@ static void cleanup_window(void) {
 static struct {
   char * instanceId;
   SP_DEVINFO_DATA data;
-} devinfos[MAX_DEVICES] = {};
+} * devinfos = NULL;
 
 static unsigned int nb_devinfos = 0;
 
@@ -365,6 +386,13 @@ static int get_devinfos() {
         }
         result = SetupDiGetDeviceInstanceId(hdevinfo, &data, buf, bufsize, NULL);
         if (result == TRUE) {
+          void * ptr = realloc(devinfos, (nb_devinfos + 1) * sizeof(*devinfos));
+          if (ptr == NULL) {
+            PRINT_ERROR_ALLOC_FAILED("malloc")
+            free(buf);
+            continue;
+          }
+          devinfos = ptr;
           devinfos[nb_devinfos].instanceId = buf;
           devinfos[nb_devinfos].data = data;
           ++nb_devinfos;
@@ -392,8 +420,9 @@ void free_dev_info() {
   unsigned int i;
   for (i = 0; i < nb_devinfos; ++i) {
     free(devinfos[i].instanceId);
-    memset(devinfos + i, 0x00, sizeof(*devinfos));
   }
+  free(devinfos);
+  devinfos = NULL;
   nb_devinfos = 0;
 }
 
@@ -502,25 +531,65 @@ static void init_device(const RAWINPUTDEVICELIST * dev) {
   *ptr = '\0';
   
   if (dev->dwType == RIM_TYPEMOUSE) {
-    mice[available_mice].name = get_dev_name_by_instance(buf);
-    if (mice[available_mice].name != NULL) {
-      mice[available_mice].handle = dev->hDevice;
-      available_mice++;
+    char * name = get_dev_name_by_instance(buf);
+    if (name == NULL) {
+      return;
     }
+    void * ptr = realloc(mice, (nb_mice + 1) * sizeof(*mice));
+    if (ptr == NULL) {
+      PRINT_ERROR_ALLOC_FAILED("realloc")
+      free(name);
+      return;
+    }
+    mice = ptr;
+    mice[nb_mice].name = name;
+    mice[nb_mice].handle = dev->hDevice;
+    nb_mice++;
   }
   else if(dev->dwType == RIM_TYPEKEYBOARD) {
-    keyboards[available_keyboards].name = get_dev_name_by_instance(buf);
-    if (keyboards[available_keyboards].name != NULL) {
-      keyboards[available_keyboards].keystates = calloc(MAX_KEYS, sizeof(unsigned char));
-      if (keyboards[available_keyboards].keystates != NULL) {
-        keyboards[available_keyboards].handle = dev->hDevice;
-        available_keyboards++;
-      } else {
-        free(keyboards[available_keyboards].name);
-        keyboards[available_keyboards].name = NULL;
-      }
+    char * name = get_dev_name_by_instance(buf);
+    if (name == NULL) {
+      return;
     }
+    unsigned char * keystates = calloc(MAX_KEYS, sizeof(*keystates));
+    if (keystates == NULL) {
+      PRINT_ERROR_ALLOC_FAILED("calloc")
+      free(name);
+      return;
+    }
+    void * ptr = realloc(keyboards, (nb_keyboards + 1) * sizeof(*keyboards));
+    if (ptr == NULL) {
+      PRINT_ERROR_ALLOC_FAILED("realloc")
+      free(keystates);
+      free(name);
+      return;
+    }
+    keyboards = ptr;
+    keyboards[nb_keyboards].name = name;
+    keyboards[nb_keyboards].handle = dev->hDevice;
+    keyboards[nb_keyboards].keystates = keystates;
+    nb_keyboards++;
   }
+}
+
+void rawinput_quit(void) {
+
+  register_raw_input(0);
+  cleanup_window();
+  unsigned int i;
+  for(i = 0; i < nb_keyboards; ++i) {
+    free(keyboards[i].name);
+    free(keyboards[i].keystates);
+  }
+  free(keyboards);
+  keyboards = NULL;
+  nb_keyboards = 0;
+  for(i = 0; i < nb_mice; ++i) {
+    free(mice[i].name);
+  }
+  free(mice);
+  mice = NULL;
+  nb_mice = 0;
 }
 
 int rawinput_init(const GPOLL_INTERFACE * poll_interface __attribute__((unused)), int (*callback)(GE_Event*)) {
@@ -531,9 +600,6 @@ int rawinput_init(const GPOLL_INTERFACE * poll_interface __attribute__((unused))
   }
 
   event_callback = callback;
-
-  available_mice = 0;
-  available_keyboards = 0;
   
   if (get_devinfos() < 0) {
     return -1;
@@ -558,13 +624,13 @@ int rawinput_init(const GPOLL_INTERFACE * poll_interface __attribute__((unused))
   free_dev_info();
   
   if(result == (UINT)-1) {
+    rawinput_quit();
     return -1;
   }
   
   if (!init_event_queue()) {
-    cleanup_window();
-    available_mice = 0;
-    available_keyboards = 0;
+    rawinput_quit();
+    return -1;
   }
   
   IsWow64Process(GetCurrentProcess(), &bIsWow64);
@@ -572,42 +638,12 @@ int rawinput_init(const GPOLL_INTERFACE * poll_interface __attribute__((unused))
   return 0;
 }
 
-void rawinput_quit(void) {
-
-  RAWINPUTDEVICE rid[2] = {
-    {
-      .usUsagePage = HID_USAGE_PAGE_GENERIC,
-      .usUsage = HID_USAGE_GENERIC_MOUSE,
-      .dwFlags = RIDEV_REMOVE,
-    },
-    {
-      .usUsagePage = HID_USAGE_PAGE_GENERIC,
-      .usUsage = HID_USAGE_GENERIC_KEYBOARD,
-      .dwFlags = RIDEV_REMOVE
-    }
-  };
-  RegisterRawInputDevices(rid, sizeof(rid) / sizeof(*rid), sizeof(*rid));
-  cleanup_window();
-  unsigned int i;
-  for(i = 0; i < available_keyboards; ++i) {
-    free(keyboards[i].name);
-    free(keyboards[i].keystates);
-    memset(keyboards + i, 0x00, sizeof(*keyboards));
-  }
-  available_keyboards = 0;
-  for(i = 0; i < available_mice; ++i) {
-    free(mice[i].name);
-    memset(mice + i, 0x00, sizeof(*mice));
-  }
-  available_mice = 0;
-}
-
 const char * rawinput_mouse_name(int index) {
-  return ((unsigned int) index < available_mice) ? mice[index].name : NULL;
+  return ((unsigned int) index < nb_mice) ? mice[index].name : NULL;
 }
 
 const char * rawinput_keyboard_name(int index) {
-  return ((unsigned int) index < available_keyboards) ? keyboards[index].name : NULL;
+  return ((unsigned int) index < nb_keyboards) ? keyboards[index].name : NULL;
 }
 
 int rawinput_poll() {

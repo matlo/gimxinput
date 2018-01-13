@@ -17,6 +17,15 @@
 #define SCREEN_WIDTH  1
 #define SCREEN_HEIGHT 1
 
+// The SDL has reference counters for each subsystem (since version 2.00).
+
+// SDL_INIT_GAMECONTROLLER adds SDL_INIT_JOYSTICK, which in turn adds SDL_INIT_EVENT
+#define JOYSTICK_FLAGS (SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC)
+
+// SDL_INIT_VIDEO adds SDL_INIT_EVENT
+// Grabbing the mouse pointer requires a window.
+#define MKB_FLAGS (SDL_INIT_VIDEO)
+
 static struct
 {
   unsigned int sdltype;
@@ -41,7 +50,7 @@ static int js_max_index = 0;
 // number of opened joysticks, so as to be able to close the joystick subsystem
 // and to avoid pumping the SDL library events when no joystick is used.
 static int joysticks_registered = 0;
-static int joysticks_opened;
+static int joysticks_opened = 0;
 
 struct joystick_device {
     int index;
@@ -213,7 +222,7 @@ static int sdlinput_js_init(const GPOLL_INTERFACE * poll_interface __attribute__
         js_init = 1;
     }
 
-    if (SDL_InitSubSystem(SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC) < 0) {
+    if (SDL_InitSubSystem(JOYSTICK_FLAGS) < 0) {
         PRINT_ERROR_SDL("SDL_InitSubSystem")
         return -1;
     }
@@ -288,14 +297,7 @@ static int sdlinput_mkb_init(const GPOLL_INTERFACE * poll_interface __attribute_
         mkb_init = 1;
     }
 
-    uint32_t flags = SDL_INIT_VIDEO;
-
-    // this is required to initialize the event queue
-    if (js_init == 0) {
-        flags |= SDL_INIT_JOYSTICK;
-    }
-
-    if (SDL_InitSubSystem(flags) < 0) {
+    if (SDL_InitSubSystem(MKB_FLAGS) < 0) {
         PRINT_ERROR_SDL("SDL_InitSubSystem")
         return -1;
     }
@@ -320,13 +322,7 @@ static void sdlinput_js_quit(void) {
 
     GLIST_CLEAN_ALL(sdl_devices, js_close_internal)
 
-    uint32_t flags = SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC;
-
-    if (mkb_init == 0) {
-        flags |= SDL_INIT_JOYSTICK;
-    }
-
-    SDL_QuitSubSystem(flags);
+    SDL_QuitSubSystem(JOYSTICK_FLAGS);
 
     if (mkb_init == 0) {
         SDL_Quit();
@@ -345,13 +341,7 @@ static void sdlinput_mkb_quit(void) {
 
     SDL_DestroyWindow(window);
 
-    uint32_t flags = SDL_INIT_VIDEO;
-
-    if (js_init == 0) {
-        flags |= SDL_INIT_JOYSTICK;
-    }
-
-    SDL_QuitSubSystem(flags);
+    SDL_QuitSubSystem(MKB_FLAGS);
 
     if (js_init == 0) {
         SDL_Quit();
@@ -428,7 +418,7 @@ static int js_close_internal(void * user) {
     // Closing the joystick subsystem also closes SDL's event queue.
     // Don't close it if mkb_init is set.
     if (joysticks_opened == joysticks_registered && mkb_init == 0) {
-        SDL_QuitSubSystem(SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC);
+        SDL_QuitSubSystem(JOYSTICK_FLAGS);
     }
 
     return 0;
@@ -468,18 +458,19 @@ static int sdl_peep_events(GE_Event* events, int size);
 
 static int sdlinput_sync_process() {
 
+    /*
+     * No joystick is opened and mkb_init is not set.
+     */
+    if (joysticks_opened == joysticks_registered && mkb_init == 0) {
+        return 0;
+    }
+
     unsigned int i;
     int num_evt;
     static GE_Event events[EVENT_BUFFER_SIZE];
     GE_Event* event;
 
-    /*
-     * Pump events only if a joystick is opened
-     * or if mkb_init is set.
-     */
-    if (joysticks_opened != joysticks_registered || mkb_init != 0) {
-        SDL_PumpEvents();
-    }
+    SDL_PumpEvents();
 
     num_evt = sdl_peep_events(events, sizeof(events) / sizeof(events[0]));
     

@@ -16,9 +16,12 @@
 #include <gimxpoll/include/gpoll.h>
 #include <gimxcommon/include/gerror.h>
 #include <gimxcommon/include/glist.h>
+#include <gimxlog/include/glog.h>
 #include "../events.h"
 
 #define eprintf(...) if(debug) printf(__VA_ARGS__)
+
+GLOG_GET(GLOG_NAME)
 
 static int debug = 0;
 
@@ -248,7 +251,7 @@ static int open_haptic(struct joystick_device * device, int fd_ev) {
 
     unsigned long features[4];
     if (ioctl(fd_ev, EVIOCGBIT(EV_FF, sizeof(features)), features) == -1) {
-        perror("ioctl EV_FF");
+        PRINT_ERROR_ERRNO("ioctl EV_FF")
         return -1;
     }
     unsigned int i;
@@ -262,7 +265,7 @@ static int open_haptic(struct joystick_device * device, int fd_ev) {
                 device->force_feedback.effects |= effect_types[i].type;
                 device->force_feedback.ids[i] = effect.id;
             } else {
-                perror("ioctl EVIOCSFF");
+                PRINT_ERROR_ERRNO("ioctl EVIOCSFF")
             }
         }
     }
@@ -323,7 +326,9 @@ static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Ev
             if (fd_js != -1) {
                 // get the device name
                 if (ioctl(fd_js, JSIOCGNAME(sizeof(name) - 1), name) < 0) {
-                    fprintf(stderr, "ioctl EVIOCGNAME failed: %s\n", strerror(errno));
+                    if (GLOG_LEVEL(GLOG_NAME,ERROR)) {
+                        fprintf(stderr, "ioctl EVIOCGNAME failed: %s\n", strerror(errno));
+                    }
                     JSINIT_ERROR()
                 }
                 // get the number of buttons and the axis map, to allow converting hat axes to buttons
@@ -360,7 +365,9 @@ static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Ev
                 GLIST_ADD(js_devices, device)
                 j_num++;
             } else if (errno == EACCES) {
-                fprintf(stderr, "can't open %s: %s\n", js_file, strerror(errno));
+                if (GLOG_LEVEL(GLOG_NAME,ERROR)) {
+                    fprintf(stderr, "can't open %s: %s\n", js_file, strerror(errno));
+                }
                 ret = -1;
             }
 
@@ -368,7 +375,9 @@ static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Ev
         }
         free(namelist_js);
     } else {
-        fprintf(stderr, "can't scan directory %s: %s\n", DEV_INPUT, strerror(errno));
+        if (GLOG_LEVEL(GLOG_NAME,ERROR)) {
+            fprintf(stderr, "can't scan directory %s: %s\n", DEV_INPUT, strerror(errno));
+        }
         ret = -1;
     }
 
@@ -443,14 +452,14 @@ static int js_set_haptic(const GE_Event * event) {
         if (effect.id != -1) {
             // Update the effect.
             if (ioctl(fd, EVIOCSFF, &effect) == -1) {
-                perror("ioctl EVIOCSFF");
+                PRINT_ERROR_ERRNO("ioctl EVIOCSFF")
                 ret = -1;
             }
             struct input_event play = { .type = EV_FF, .value = 1, /* play: 1, stop: 0 */
             .code = effect.id };
             // Play the effect.
             if (write(fd, (const void*) &play, sizeof(play)) == -1) {
-                perror("write");
+                PRINT_ERROR_ERRNO("write")
                 ret = -1;
             }
         }

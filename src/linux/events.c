@@ -18,6 +18,9 @@
 
 #include <ginput.h>
 #include <gimxcommon/include/gerror.h>
+#include <gimxlog/include/glog.h>
+
+GLOG_GET(GLOG_NAME)
 
 static int mkb_source = -1;
 

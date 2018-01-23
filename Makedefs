@@ -10,7 +10,11 @@ CXXFLAGS += -Wall -Wextra -O3
 #CFLAGS += -Wall -Wextra -O0 -g
 #CXXFLAGS += -Wall -Wextra -O0 -g
 
-LIBNAME=lib$(shell basename $(shell pwd))
+NAME=$(shell basename $(shell pwd))
+
+LIBNAME=lib$(NAME)
+
+CFLAGS += -DGLOG_NAME=$(NAME)
 
 ifneq ($(OS),Windows_NT)
 LIB=$(LIBNAME).so

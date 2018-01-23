@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <gimxcommon/include/gerror.h>
 #include <gimxcommon/include/glist.h>
+#include <gimxlog/include/glog.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -50,6 +51,8 @@ typedef struct PACKED {
 } s_sc_report;
 
 #define HID_REPORT_SIZE sizeof(s_sc_report)
+
+GLOG_GET(GLOG_NAME)
 
 struct hidinput_device_internal {
     struct ghid_device * hid;

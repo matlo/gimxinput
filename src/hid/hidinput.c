@@ -7,8 +7,11 @@
 #include <gimxpoll/include/gpoll.h>
 #include <gimxcommon/include/gerror.h>
 #include <gimxcommon/include/glist.h>
+#include <gimxlog/include/glog.h>
 #include <stdlib.h>
 #include <string.h>
+
+GLOG_GET(GLOG_NAME)
 
 static s_hidinput_driver ** drivers = NULL;
 static unsigned int nb_drivers = 0;

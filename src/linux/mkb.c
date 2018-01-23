@@ -16,9 +16,12 @@
 #include <gimxpoll/include/gpoll.h>
 #include <gimxcommon/include/gerror.h>
 #include <gimxcommon/include/glist.h>
+#include <gimxlog/include/glog.h>
 #include "../events.h"
 
 #define eprintf(...) if(debug) printf(__VA_ARGS__)
+
+GLOG_GET(GLOG_NAME)
 
 static int debug = 0;
 

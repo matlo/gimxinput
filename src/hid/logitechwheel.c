@@ -9,6 +9,7 @@
 #endif
 #include <gimxcommon/include/gerror.h>
 #include <gimxcommon/include/glist.h>
+#include <gimxlog/include/glog.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -32,6 +33,8 @@
 #define USB_PRODUCT_ID_LOGITECH_G29_WHEEL        0xc24f
 
 #define FF_LG_OUTPUT_REPORT_SIZE 7
+
+GLOG_GET(GLOG_NAME)
 
 struct hidinput_device_internal {
     struct ghid_device * hid;
@@ -562,10 +565,14 @@ static int send_native_mode(const struct ghid_device_info * dev, const s_native_
     }
     int ret = ghid_write_timeout(device, native_mode->command, sizeof(native_mode->command), 1000);
     if (ret <= 0) {
-        fprintf(stderr, "failed to send native mode command for HID device %s (PID=%04x)\n", dev->path, dev->product_id);
+        if (GLOG_LEVEL(GLOG_NAME,ERROR)) {
+            fprintf(stderr, "failed to send native mode command for HID device %s (PID=%04x)\n", dev->path, dev->product_id);
+        }
         ret = -1;
     } else {
-        printf("native mode command sent to HID device %s (PID=%04x)\n", dev->path, dev->product_id);
+        if (GLOG_LEVEL(GLOG_NAME,INFO)) {
+            printf("native mode command sent to HID device %s (PID=%04x)\n", dev->path, dev->product_id);
+        }
         ret = 0;
     }
     ghid_close(device);
@@ -588,7 +595,9 @@ static int check_native_mode(const struct ghid_device_info * dev, unsigned short
         struct ghid_device_info * current;
         for (current = hid_devs; current != NULL && reset == 0; current = current->next) {
             if (strcmp(current->path, dev->path) == 0) {
-                printf("native mode enabled for HID device %s (PID=%04x)\n", dev->path, product_id);
+                if (GLOG_LEVEL(GLOG_NAME,INFO)) {
+                    printf("native mode enabled for HID device %s (PID=%04x)\n", dev->path, product_id);
+                }
                 reset = 1;
             }
         }
@@ -605,11 +614,15 @@ static int set_native_mode(const struct ghid_device_info * dev, const s_native_m
             return -1;
         }
         if (check_native_mode(dev, native_mode->product_id) < 0) {
-            fprintf(stderr, "failed to enable native mode for HID device %s\n", dev->path);
+            if (GLOG_LEVEL(GLOG_NAME,ERROR)) {
+                fprintf(stderr, "failed to enable native mode for HID device %s\n", dev->path);
+            }
             return -1;
         }
     } else {
-        printf("native mode is already enabled for HID device %s (PID=%04x)\n", dev->path, dev->product_id);
+        if (GLOG_LEVEL(GLOG_NAME,INFO)) {
+            printf("native mode is already enabled for HID device %s (PID=%04x)\n", dev->path, dev->product_id);
+        }
     }
     return 0;
 }
@@ -617,7 +630,9 @@ static int set_native_mode(const struct ghid_device_info * dev, const s_native_m
 static int set_native_mode(const struct ghid_device_info * dev __attribute__((unused)), const s_native_mode * native_mode) {
 
     if (native_mode) {
-        printf("Found Logitech wheel not in native mode.\n");
+        if (GLOG_LEVEL(GLOG_NAME,INFO)) {
+            printf("Found Logitech wheel not in native mode.\n");
+        }
         const char * download = NULL;
         SYSTEM_INFO info;
         GetNativeSystemInfo(&info);
@@ -631,7 +646,9 @@ static int set_native_mode(const struct ghid_device_info * dev __attribute__((un
             break;
         }
         if (download != NULL) {
-            printf("Please install Logitech Gaming Software from: %s.\n", download);
+            if (GLOG_LEVEL(GLOG_NAME,INFO)) {
+                printf("Please install Logitech Gaming Software from: %s.\n", download);
+            }
         }
     }
     return 0;

@@ -8,17 +8,20 @@
 #include <ginput.h>
 #include <gpoll.h>
 #include "../sdl/sdlinput.h"
+#include <gimxlog/include/glog.h>
+
+GLOG_GET(GLOG_NAME)
 
 int ev_init(unsigned char mkb_src, int(*callback)(GE_Event*))
 {
   if (callback == NULL) {
-    fprintf(stderr, "callback cannot be NULL\n");
+    PRINT_ERROR_OTHER("callback cannot be NULL")
     return -1;
   }
 
   if (mkb_src == GE_MKB_SOURCE_PHYSICAL)
   {
-    fprintf(stderr, "Physical events are not available on this platform.\n");
+    PRINT_ERROR_OTHER("Physical events are not available on this platform.")
     return -1;
   }
 

@@ -42,6 +42,7 @@
 #include <setupapi.h>
 
 #include <gimxcommon/include/gerror.h>
+#include <gimxlog/include/glog.h>
 
 #define MAX_DEVICES 256
 #define MAX_KEYS 256
@@ -53,6 +54,8 @@
 #define RI_MOUSE_HWHEEL 0x0800
 
 #define RAWINPUT_MAX_EVENTS 1024
+
+GLOG_GET(GLOG_NAME)
 
 static HWND raw_hwnd = NULL;
 static const char * class_name = RAWINPUT_CLASS_NAME;

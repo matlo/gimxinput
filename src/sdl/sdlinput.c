@@ -10,12 +10,18 @@
 #include <ginput.h>
 #include <gimxcommon/include/gerror.h>
 #include <gimxcommon/include/glist.h>
+#include <gimxlog/include/glog.h>
 #include "../events.h"
 
-#define PRINT_ERROR_SDL(msg) fprintf(stderr, "%s:%d %s: %s failed with error: %s\n", __FILE__, __LINE__, __func__, msg, SDL_GetError());
+#define PRINT_ERROR_SDL(msg) \
+  if (GLOG_LEVEL(GLOG_NAME,ERROR)) { \
+    fprintf(stderr, "%s:%d %s: %s failed with error: %s\n", __FILE__, __LINE__, __func__, msg, SDL_GetError()); \
+  }
 
 #define SCREEN_WIDTH  1
 #define SCREEN_HEIGHT 1
+
+GLOG_GET(GLOG_NAME)
 
 // The SDL has reference counters for each subsystem (since version 2.00).
 
@@ -208,7 +214,9 @@ static int sdlinput_js_init(const GPOLL_INTERFACE * poll_interface __attribute__
     int i;
 
     if (callback == NULL) {
-        fprintf(stderr, "callback cannot be NULL\n");
+        if (GLOG_LEVEL(GLOG_NAME,ERROR)) {
+            fprintf(stderr, "callback cannot be NULL\n");
+        }
         return -1;
     }
 
@@ -265,7 +273,7 @@ static int sdlinput_js_init(const GPOLL_INTERFACE * poll_interface __attribute__
             if (device->hat_info.joystickNbHat > 0) {
                 device->hat_info.joystickHat = calloc(device->hat_info.joystickNbHat, sizeof(unsigned char));
                 if (device->hat_info.joystickHat == NULL) {
-                    PRINT_ERROR_OTHER("unable to allocate memory for joystick hats");
+                    PRINT_ERROR_OTHER("unable to allocate memory for joystick hats")
                 }
             }
         }
@@ -283,7 +291,9 @@ static int sdlinput_js_init(const GPOLL_INTERFACE * poll_interface __attribute__
 static int sdlinput_mkb_init(const GPOLL_INTERFACE * poll_interface __attribute__((unused)), int (*callback)(GE_Event*)) {
 
     if (callback == NULL) {
-        fprintf(stderr, "callback cannot be NULL\n");
+        if (GLOG_LEVEL(GLOG_NAME,ERROR)) {
+            fprintf(stderr, "callback cannot be NULL\n");
+        }
         return -1;
     }
 

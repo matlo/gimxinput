@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <gimxpoll/include/gpoll.h>
+#include <gimxlog/include/glog.h>
 
 #define GE_MAX_DEVICES 256
 

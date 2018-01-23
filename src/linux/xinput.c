@@ -14,7 +14,10 @@
 #include <gimxpoll/include/gpoll.h>
 #include <gimxcommon/include/gerror.h>
 #include <gimxcommon/include/glist.h>
+#include <gimxlog/include/glog.h>
 #include "../events.h"
+
+GLOG_GET(GLOG_NAME)
 
 static Display* dpy = NULL;
 static Window win;

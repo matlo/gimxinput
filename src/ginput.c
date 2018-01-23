@@ -19,10 +19,13 @@
 #endif
 #include "hid/hidinput.h"
 #include <gimxcommon/include/gerror.h>
+#include <gimxlog/include/glog.h>
 
 #define BT_SIXAXIS_NAME "PLAYSTATION(R)3 Controller"
 #define XONE_PAD_NAME "Microsoft X-Box One pad"
 #define DUALSHOCK4_V2_NAME "Sony Interactive Entertainment Wireless Controller"
+
+GLOG_INST(GLOG_NAME)
 
 static struct
 {
@@ -398,7 +401,7 @@ int ginput_register_joystick(const char* name, unsigned int effects, int (*hapti
 {
   if(initialized)
   {
-    PRINT_ERROR_OTHER("this function can only be called before ginput_init");
+    PRINT_ERROR_OTHER("this function can only be called before ginput_init")
     return -1;
   }
 

@@ -10,6 +10,9 @@ endif
 CPPFLAGS += -Iinclude -I. -I../
 CFLAGS += -fPIC
 
+LDFLAGS += -L../gimxlog
+LDLIBS += -lgimxlog
+
 LDFLAGS += -L../gimxhid
 LDLIBS += -lgimxhid
 

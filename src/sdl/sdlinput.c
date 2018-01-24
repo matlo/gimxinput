@@ -273,7 +273,7 @@ static int sdlinput_js_init(const GPOLL_INTERFACE * poll_interface __attribute__
             if (device->hat_info.joystickNbHat > 0) {
                 device->hat_info.joystickHat = calloc(device->hat_info.joystickNbHat, sizeof(unsigned char));
                 if (device->hat_info.joystickHat == NULL) {
-                    PRINT_ERROR_OTHER("unable to allocate memory for joystick hats")
+                    PRINT_ERROR_ALLOC_FAILED("calloc")
                 }
             }
         }

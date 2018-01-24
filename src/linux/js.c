@@ -326,9 +326,7 @@ static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Ev
             if (fd_js != -1) {
                 // get the device name
                 if (ioctl(fd_js, JSIOCGNAME(sizeof(name) - 1), name) < 0) {
-                    if (GLOG_LEVEL(GLOG_NAME,ERROR)) {
-                        fprintf(stderr, "ioctl EVIOCGNAME failed: %s\n", strerror(errno));
-                    }
+                    PRINT_ERROR_ERRNO("ioctl EVIOCGNAME")
                     JSINIT_ERROR()
                 }
                 // get the number of buttons and the axis map, to allow converting hat axes to buttons

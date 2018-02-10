@@ -259,9 +259,8 @@ static int sdlinput_js_init(const GPOLL_INTERFACE * poll_interface __attribute__
         sdlInstanceIdToIndex[instanceId] = js_max_index;
         ++js_max_index;
 
-        SDL_JoystickGUID guid = SDL_JoystickGetDeviceGUID(i);
-        device->usb_ids.vendor = guid.data[1] << 8 | guid.data[0];
-        device->usb_ids.product = guid.data[3] << 8 | guid.data[2];
+        device->usb_ids.vendor = SDL_JoystickGetDeviceVendor(i);
+        device->usb_ids.product = SDL_JoystickGetDeviceProduct(i);
         open_haptic(device, joystick);
         if (controller != NULL) {
             device->controller = controller;

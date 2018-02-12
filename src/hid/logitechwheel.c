@@ -65,7 +65,7 @@ static int close_device(struct hidinput_device_internal * device) {
 GLIST_INST(struct hidinput_device_internal, lgw_devices, close_device)
 
 #define MAKE_IDS(USB_PRODUCT_ID) \
-    { .vendor_id = USB_VENDOR_ID_LOGITECH, .product_id = USB_PRODUCT_ID }
+    { .vendor_id = USB_VENDOR_ID_LOGITECH, .product_id = USB_PRODUCT_ID, .interface_number = -1 }
 
 static s_hidinput_ids ids[] = {
         MAKE_IDS(USB_PRODUCT_ID_LOGITECH_FORMULA_FORCE),
@@ -556,30 +556,7 @@ static s_native_mode * get_native_mode_command(unsigned short product, unsigned 
   return NULL;
 }
 
-#ifndef WIN32
-static int send_native_mode(const struct ghid_device_info * dev, const s_native_mode * native_mode) {
-
-    struct ghid_device * device = ghid_open_path(dev->path);
-    if (device == NULL) {
-        return -1;
-    }
-    int ret = ghid_write_timeout(device, native_mode->command, sizeof(native_mode->command), 1000);
-    if (ret <= 0) {
-        if (GLOG_LEVEL(GLOG_NAME,ERROR)) {
-            fprintf(stderr, "failed to send native mode command for HID device %s (PID=%04x)\n", dev->path, dev->product_id);
-        }
-        ret = -1;
-    } else {
-        if (GLOG_LEVEL(GLOG_NAME,INFO)) {
-            printf("native mode command sent to HID device %s (PID=%04x)\n", dev->path, dev->product_id);
-        }
-        ret = 0;
-    }
-    ghid_close(device);
-    return ret;
-}
-
-static int check_native_mode(const struct ghid_device_info * dev, unsigned short product_id) {
+static int check_native_mode(const struct ghid_device_info * hid_devs_before, unsigned short product_id) {
 
     // wait up to 5 seconds for the device to enable native mode
     int reset = 0;
@@ -594,12 +571,21 @@ static int check_native_mode(const struct ghid_device_info * dev, unsigned short
         struct ghid_device_info * hid_devs = ghid_enumerate(USB_VENDOR_ID_LOGITECH, product_id);
         struct ghid_device_info * current;
         for (current = hid_devs; current != NULL && reset == 0; current = current->next) {
-            if (strcmp(current->path, dev->path) == 0) {
-                if (GLOG_LEVEL(GLOG_NAME,INFO)) {
-                    printf("native mode enabled for HID device %s (PID=%04x)\n", dev->path, product_id);
+            // look for any new device with the right (vid, pid)
+            // do not search the old device path as it is expected to change on Windows
+            const struct ghid_device_info * before;
+            for (before = hid_devs_before; before != NULL; before = before->next) {
+                if (current->path == before->path) {
+                    break;
                 }
-                reset = 1;
             }
+            if (before != NULL) {
+                continue; // device was already present, look for another one
+            }
+            if (GLOG_LEVEL(GLOG_NAME,INFO)) {
+                printf("native mode enabled for HID device %s (PID=%04x)\n", current->path, product_id);
+            }
+            reset = 1;
         }
         ghid_free_enumeration(hid_devs);
     } while (cpt < 5 && !reset);
@@ -607,16 +593,66 @@ static int check_native_mode(const struct ghid_device_info * dev, unsigned short
     return (reset == 1) ? 0 : -1;
 }
 
-static int set_native_mode(const struct ghid_device_info * dev, const s_native_mode * native_mode) {
+static int send_native_mode(const struct ghid_device_info * dev, const s_native_mode * native_mode) {
 
-    if (native_mode) {
-        if (send_native_mode(dev, native_mode) < 0) {
-            return -1;
+    struct ghid_device * device = ghid_open_path(dev->path);
+    if (device == NULL) {
+        return -1;
+    }
+
+    struct ghid_device_info * hid_devs_before = ghid_enumerate(USB_VENDOR_ID_LOGITECH, native_mode->product_id);
+
+    int ret = ghid_write_timeout(device, native_mode->command, sizeof(native_mode->command), 1000);
+    if (ret <= 0) {
+        if (GLOG_LEVEL(GLOG_NAME,ERROR)) {
+            fprintf(stderr, "failed to send native mode command for HID device %s (PID=%04x)\n", dev->path, dev->product_id);
         }
+        ret = -1;
+    } else {
+        if (GLOG_LEVEL(GLOG_NAME,INFO)) {
+            printf("native mode command sent to HID device %s (PID=%04x)\n", dev->path, dev->product_id);
+        }
+        ret = 0;
+    }
+    ghid_close(device);
+
+    if (ret == 0) {
         if (check_native_mode(dev, native_mode->product_id) < 0) {
             if (GLOG_LEVEL(GLOG_NAME,ERROR)) {
                 fprintf(stderr, "failed to enable native mode for HID device %s\n", dev->path);
             }
+#ifdef WIN32
+            const char * download = NULL;
+            SYSTEM_INFO info;
+            GetNativeSystemInfo(&info);
+            switch (info.wProcessorArchitecture) {
+                case PROCESSOR_ARCHITECTURE_AMD64:
+                case PROCESSOR_ARCHITECTURE_IA64:
+                download = "http://gimx.fr/download/LGS64";
+                break;
+                case PROCESSOR_ARCHITECTURE_INTEL:
+                download = "http://gimx.fr/download/LGS32";
+                break;
+            }
+            if (download != NULL) {
+                if (GLOG_LEVEL(GLOG_NAME,ERROR)) {
+                    fprintf(stderr, "Please install Logitech Gaming Software from: %s.\n", download);
+                }
+            }
+#endif
+            ret = -1;
+        }
+    }
+
+    ghid_free_enumeration(hid_devs_before);
+
+    return ret;
+}
+
+static int set_native_mode(const struct ghid_device_info * dev, const s_native_mode * native_mode) {
+
+    if (native_mode) {
+        if (send_native_mode(dev, native_mode) < 0) {
             return -1;
         }
     } else {
@@ -626,34 +662,6 @@ static int set_native_mode(const struct ghid_device_info * dev, const s_native_m
     }
     return 0;
 }
-#else
-static int set_native_mode(const struct ghid_device_info * dev __attribute__((unused)), const s_native_mode * native_mode) {
-
-    if (native_mode) {
-        if (GLOG_LEVEL(GLOG_NAME,INFO)) {
-            printf("Found Logitech wheel not in native mode.\n");
-        }
-        const char * download = NULL;
-        SYSTEM_INFO info;
-        GetNativeSystemInfo(&info);
-        switch (info.wProcessorArchitecture) {
-            case PROCESSOR_ARCHITECTURE_AMD64:
-            case PROCESSOR_ARCHITECTURE_IA64:
-            download = "http://gimx.fr/download/LGS64";
-            break;
-            case PROCESSOR_ARCHITECTURE_INTEL:
-            download = "http://gimx.fr/download/LGS32";
-            break;
-        }
-        if (download != NULL) {
-            if (GLOG_LEVEL(GLOG_NAME,INFO)) {
-                printf("Please install Logitech Gaming Software from: %s.\n", download);
-            }
-        }
-    }
-    return 0;
-}
-#endif
 
 static struct hidinput_device_internal *  open_device(const struct ghid_device_info * dev) {
 

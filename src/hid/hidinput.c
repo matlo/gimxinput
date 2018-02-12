@@ -194,7 +194,7 @@ void hidinput_quit() {
 
 int hidinput_set_callbacks(void * dev, void * user, int (* write_cb)(void * user, int transfered), int (* close_cb)(void * user)) {
 
-    // to be safe, check this device exits
+    // to be safe, check this device exists
 
     struct hidinput_device * device;
     for (device = GLIST_BEGIN(hidinput_devices); device != GLIST_END(hidinput_devices); device = device->next) {

@@ -65,7 +65,7 @@ static int close_device(struct hidinput_device_internal * device) {
 GLIST_INST(struct hidinput_device_internal, lgw_devices, close_device)
 
 #define MAKE_IDS(USB_PRODUCT_ID) \
-    { .vendor_id = USB_VENDOR_ID_LOGITECH, .product_id = USB_PRODUCT_ID }
+    { .vendor_id = USB_VENDOR_ID_LOGITECH, .product_id = USB_PRODUCT_ID, .interface_number = -1 }
 
 static s_hidinput_ids ids[] = {
         MAKE_IDS(USB_PRODUCT_ID_LOGITECH_FORMULA_FORCE),
@@ -594,6 +594,7 @@ static int check_native_mode(const struct ghid_device_info * dev, unsigned short
         struct ghid_device_info * hid_devs = ghid_enumerate(USB_VENDOR_ID_LOGITECH, product_id);
         struct ghid_device_info * current;
         for (current = hid_devs; current != NULL && reset == 0; current = current->next) {
+            // Warning: this only works on GNU/Linux, on Windows the device path is expected to change
             if (strcmp(current->path, dev->path) == 0) {
                 if (GLOG_LEVEL(GLOG_NAME,INFO)) {
                     printf("native mode enabled for HID device %s (PID=%04x)\n", dev->path, product_id);

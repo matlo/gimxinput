@@ -6,7 +6,6 @@
 #include "../events.h"
 
 #include <ginput.h>
-#include <gpoll.h>
 #include "../sdl/sdlinput.h"
 #include <gimxlog/include/glog.h>
 

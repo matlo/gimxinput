@@ -18,19 +18,19 @@
 
 #define USB_PRODUCT_ID_LOGITECH_FORMULA_YELLOW   0xc202 // no force feedback
 #define USB_PRODUCT_ID_LOGITECH_FORMULA_GP       0xc20e // no force feedback
-#define USB_PRODUCT_ID_LOGITECH_FORMULA_FORCE    0xc291
-#define USB_PRODUCT_ID_LOGITECH_FORMULA_FORCE_GP 0xc293
-#define USB_PRODUCT_ID_LOGITECH_DRIVING_FORCE    0xc294
-#define USB_PRODUCT_ID_LOGITECH_MOMO_WHEEL       0xc295
-#define USB_PRODUCT_ID_LOGITECH_DFP_WHEEL        0xc298
-#define USB_PRODUCT_ID_LOGITECH_G25_WHEEL        0xc299
-#define USB_PRODUCT_ID_LOGITECH_DFGT_WHEEL       0xc29a
-#define USB_PRODUCT_ID_LOGITECH_G27_WHEEL        0xc29b
+#define USB_PRODUCT_ID_LOGITECH_FORMULA_FORCE    0xc291 // classic protocol
+#define USB_PRODUCT_ID_LOGITECH_FORMULA_FORCE_GP 0xc293 // classic protocol
+#define USB_PRODUCT_ID_LOGITECH_DRIVING_FORCE    0xc294 // classic protocol
+#define USB_PRODUCT_ID_LOGITECH_MOMO_WHEEL       0xc295 // classic protocol
+#define USB_PRODUCT_ID_LOGITECH_DFP_WHEEL        0xc298 // classic protocol
+#define USB_PRODUCT_ID_LOGITECH_G25_WHEEL        0xc299 // classic protocol
+#define USB_PRODUCT_ID_LOGITECH_DFGT_WHEEL       0xc29a // classic protocol
+#define USB_PRODUCT_ID_LOGITECH_G27_WHEEL        0xc29b // classic protocol
 #define USB_PRODUCT_ID_LOGITECH_WII_WHEEL        0xc29c // rumble only
-#define USB_PRODUCT_ID_LOGITECH_MOMO_WHEEL2      0xca03
+#define USB_PRODUCT_ID_LOGITECH_MOMO_WHEEL2      0xca03 // classic protocol
 #define USB_PRODUCT_ID_LOGITECH_VIBRATION_WHEEL  0xca04 // rumble only
-#define USB_PRODUCT_ID_LOGITECH_G920_WHEEL       0xc262 // does not support classic format
-#define USB_PRODUCT_ID_LOGITECH_G29_PC_WHEEL     0xc24f // not sure about this one...
+#define USB_PRODUCT_ID_LOGITECH_G920_WHEEL       0xc262 // hid++ protocol only
+#define USB_PRODUCT_ID_LOGITECH_G29_PC_WHEEL     0xc24f // classic protocol
 #define USB_PRODUCT_ID_LOGITECH_G29_PS4_WHEEL    0xc260 // classic protocol with 1 byte offset
 
 #define FF_LG_OUTPUT_REPORT_SIZE 7
@@ -78,7 +78,7 @@ static s_hidinput_ids ids[] = {
         MAKE_IDS(USB_PRODUCT_ID_LOGITECH_DFGT_WHEEL),
         MAKE_IDS(USB_PRODUCT_ID_LOGITECH_G27_WHEEL),
         MAKE_IDS(USB_PRODUCT_ID_LOGITECH_MOMO_WHEEL2),
-        MAKE_IDS(USB_PRODUCT_ID_LOGITECH_G29_PS4_WHEEL),
+        MAKE_IDS(USB_PRODUCT_ID_LOGITECH_G29_PC_WHEEL),
         { .vendor_id = 0, .product_id = 0 },
 };
 
@@ -523,17 +523,22 @@ typedef struct
 
 static s_native_mode native_modes[] =
 {
-    { USB_PRODUCT_ID_LOGITECH_DFGT_WHEEL, { 0x00, 0xf8, 0x09, 0x03, 0x01 } },
-    { USB_PRODUCT_ID_LOGITECH_G27_WHEEL,  { 0x00, 0xf8, 0x09, 0x04, 0x01 } },
-    { USB_PRODUCT_ID_LOGITECH_G25_WHEEL,  { 0x00, 0xf8, 0x10 } },
-    { USB_PRODUCT_ID_LOGITECH_DFP_WHEEL,  { 0x00, 0xf8, 0x01 } },
+    { USB_PRODUCT_ID_LOGITECH_DFGT_WHEEL,   { 0x00, 0xf8, 0x09, 0x03, 0x01 } },
+    { USB_PRODUCT_ID_LOGITECH_G27_WHEEL,    { 0x00, 0xf8, 0x09, 0x04, 0x01 } },
+    { USB_PRODUCT_ID_LOGITECH_G25_WHEEL,    { 0x00, 0xf8, 0x10 } },
+    { USB_PRODUCT_ID_LOGITECH_DFP_WHEEL,    { 0x00, 0xf8, 0x01 } },
+    { USB_PRODUCT_ID_LOGITECH_G29_PC_WHEEL, { 0x00, 0xf8, 0x09, 0x05, 0x01, 0x01 } },
 };
 
 static s_native_mode * get_native_mode_command(unsigned short product, unsigned short bcdDevice)
 {
   unsigned short native = 0x0000;
 
-  if(((USB_PRODUCT_ID_LOGITECH_DRIVING_FORCE == product) || (USB_PRODUCT_ID_LOGITECH_DFP_WHEEL == product))
+  if(((USB_PRODUCT_ID_LOGITECH_DRIVING_FORCE == product) || (USB_PRODUCT_ID_LOGITECH_DFP_WHEEL == product)
+          || (USB_PRODUCT_ID_LOGITECH_DFGT_WHEEL == product) || (USB_PRODUCT_ID_LOGITECH_G25_WHEEL == product) || (USB_PRODUCT_ID_LOGITECH_G27_WHEEL == product))
+          && ((0x1350 == (bcdDevice & 0xfff8) || 0x8900 == (bcdDevice & 0xff00)))) {
+    native = USB_PRODUCT_ID_LOGITECH_G29_PC_WHEEL;
+  } else if(((USB_PRODUCT_ID_LOGITECH_DRIVING_FORCE == product) || (USB_PRODUCT_ID_LOGITECH_DFP_WHEEL == product))
       && (0x1300 == (bcdDevice & 0xff00))) {
     native = USB_PRODUCT_ID_LOGITECH_DFGT_WHEEL;
   } else if(((USB_PRODUCT_ID_LOGITECH_DRIVING_FORCE == product) || (USB_PRODUCT_ID_LOGITECH_DFP_WHEEL == product) || (USB_PRODUCT_ID_LOGITECH_G25_WHEEL == product))
@@ -641,10 +646,34 @@ static int set_native_mode(const struct ghid_device_info * dev __attribute__((un
         switch (info.wProcessorArchitecture) {
             case PROCESSOR_ARCHITECTURE_AMD64:
             case PROCESSOR_ARCHITECTURE_IA64:
-            download = "http://gimx.fr/download/LGS64";
+            switch (native_mode->product_id)
+            {
+            case USB_PRODUCT_ID_LOGITECH_DFGT_WHEEL:
+            case USB_PRODUCT_ID_LOGITECH_G27_WHEEL:
+            case USB_PRODUCT_ID_LOGITECH_G25_WHEEL:
+            case USB_PRODUCT_ID_LOGITECH_DFP_WHEEL:
+                download = "https://gimx.fr/download/LGS64";
+                break;
+            case USB_PRODUCT_ID_LOGITECH_G29_PC_WHEEL:
+            default:
+                download = "https://gimx.fr/download/LGS64_2";
+                break;
+            }
             break;
             case PROCESSOR_ARCHITECTURE_INTEL:
-            download = "http://gimx.fr/download/LGS32";
+            switch (native_mode->product_id)
+            {
+            case USB_PRODUCT_ID_LOGITECH_DFGT_WHEEL:
+            case USB_PRODUCT_ID_LOGITECH_G27_WHEEL:
+            case USB_PRODUCT_ID_LOGITECH_G25_WHEEL:
+            case USB_PRODUCT_ID_LOGITECH_DFP_WHEEL:
+                download = "https://gimx.fr/download/LGS32";
+                break;
+            case USB_PRODUCT_ID_LOGITECH_G29_PC_WHEEL:
+            default:
+                download = "https://gimx.fr/download/LGS32_2";
+                break;
+            }
             break;
         }
         if (download != NULL) {

@@ -18,7 +18,7 @@
 
 #define USB_PRODUCT_ID_LOGITECH_FORMULA_YELLOW   0xc202 // no force feedback
 #define USB_PRODUCT_ID_LOGITECH_FORMULA_GP       0xc20e // no force feedback
-#define USB_PRODUCT_ID_LOGITECH_FORMULA_FORCE    0xc291 // classic protocol
+#define USB_PRODUCT_ID_LOGITECH_FORMULA_FORCE    0xc291 // i-force protocol
 #define USB_PRODUCT_ID_LOGITECH_FORMULA_FORCE_GP 0xc293 // classic protocol
 #define USB_PRODUCT_ID_LOGITECH_DRIVING_FORCE    0xc294 // classic protocol
 #define USB_PRODUCT_ID_LOGITECH_MOMO_WHEEL       0xc295 // classic protocol
@@ -78,7 +78,8 @@ static s_hidinput_ids ids[] = {
         MAKE_IDS(USB_PRODUCT_ID_LOGITECH_DFGT_WHEEL),
         MAKE_IDS(USB_PRODUCT_ID_LOGITECH_G27_WHEEL),
         MAKE_IDS(USB_PRODUCT_ID_LOGITECH_MOMO_WHEEL2),
-        MAKE_IDS(USB_PRODUCT_ID_LOGITECH_G29_PC_WHEEL),
+// handle the G29 through OS translation (there is some issue on Windows)
+//        MAKE_IDS(USB_PRODUCT_ID_LOGITECH_G29_PC_WHEEL),
         { .vendor_id = 0, .product_id = 0 },
 };
 

@@ -41,7 +41,7 @@ static struct {
 
 struct joystick_device {
     int id; // the id of the joystick in the generated events
-    int fd; // the opened joystick, or -1 in case the joystick was created using the js_register() function
+    int fd; // the opened joystick, or -1 in case the joystick was created using the js_add() function
     char* name; // the name of the joystick
     struct {
         unsigned short button_nb; // the base index of the generated hat buttons equals the number of physical buttons
@@ -530,6 +530,7 @@ static int js_add(const char * name, unsigned int effects, int (*haptic_cb)(cons
             index = j_num;
             indexToJoystick[j_num] = device;
             device->id = index;
+            device->fd = -1;
             device->name = strdup(name);
             device->force_feedback.effects = effects;
             device->force_feedback.haptic_cb = haptic_cb;

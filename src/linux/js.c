@@ -49,7 +49,7 @@ struct joystick_device {
         uint8_t ax_map[AXMAP_SIZE]; // the axis map
     } hat_info; // allows to convert hat axes to buttons
     struct {
-        int fd;
+        int fd; // the event device, or -1 in case the joystick was created using the js_add() function
         unsigned int effects;
         int ids[sizeof(effect_types) / sizeof(*effect_types)];
         int constant_id;
@@ -532,6 +532,7 @@ static int js_add(const char * name, unsigned int effects, int (*haptic_cb)(cons
             device->id = index;
             device->fd = -1;
             device->name = strdup(name);
+            device->force_feedback.fd = -1;
             device->force_feedback.effects = effects;
             device->force_feedback.haptic_cb = haptic_cb;
             GLIST_ADD(js_devices, device)

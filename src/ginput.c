@@ -21,37 +21,22 @@
 #include <gimxcommon/include/gerror.h>
 #include <gimxlog/include/glog.h>
 
+#ifdef __linux__
+#define SIXAXIS_NAME "Sony PLAYSTATION(R)3 Controller"
 #define BT_SIXAXIS_NAME "PLAYSTATION(R)3 Controller"
-#define XONE_PAD_NAME "Microsoft X-Box One pad"
+#define DUALSHOCK4_NAME "Sony Computer Entertainment Wireless Controller"
 #define DUALSHOCK4_V2_NAME "Sony Interactive Entertainment Wireless Controller"
+#define X360_WIRELESS_PAD_NAME "Xbox 360 Wireless Receiver"
+#define X360_PAD_NAME "Microsoft X-Box 360 pad"
+#endif
 
 GLOG_INST(GLOG_NAME)
-
-static struct
-{
-  const char* name;
-  GE_JS_Type type;
-} js_types[] =
-{
-#ifndef WIN32
-  { "Sony PLAYSTATION(R)3 Controller", GE_JS_SIXAXIS },
-  { "Sony Navigation Controller", GE_JS_SIXAXIS },
-  { "Sony Computer Entertainment Wireless Controller", GE_JS_DS4 },
-  { "Microsoft X-Box 360 pad", GE_JS_360PAD },
-  { "Microsoft X-Box One pad", GE_JS_XONEPAD },
-#else
-  { "PS4 Controller", GE_JS_DS4 },
-  { "X360 Controller", GE_JS_360PAD },
-  { "XBOX 360 For Windows (Controller)", GE_JS_360PAD },
-#endif
-};
 
 static struct
 {
   char* name;
   int virtualIndex;
   unsigned char isUsed;
-  GE_JS_Type type;
 } joysticks[GE_MAX_DEVICES] = {};
 
 static struct
@@ -79,28 +64,21 @@ static void get_joysticks()
   int i = 0;
   while (i < GE_MAX_DEVICES && (name = ev_joystick_name(i)))
   {
-    joysticks[i].type = GE_JS_OTHER; //default value
-
+#ifdef __linux__
     if (!strncmp(name, BT_SIXAXIS_NAME, sizeof(BT_SIXAXIS_NAME) - 1))
     {
       // Rename QtSixA devices.
-      name = "Sony PLAYSTATION(R)3 Controller";
-      joysticks[i].type = GE_JS_SIXAXIS;
+      name = SIXAXIS_NAME;
     }
-    if (!strncmp(name, DUALSHOCK4_V2_NAME, sizeof(DUALSHOCK4_V2_NAME)))
+    else if (!strncmp(name, DUALSHOCK4_V2_NAME, sizeof(DUALSHOCK4_V2_NAME)))
     {
       // Rename Dualshock 4 v2.
-      name = "Sony Computer Entertainment Wireless Controller";
+      name = DUALSHOCK4_NAME;
     }
-#ifdef WIN32
-    if (!strncmp(name, XONE_PAD_NAME, sizeof(XONE_PAD_NAME) - 1))
+    else if (!strncmp(name, X360_WIRELESS_PAD_NAME, sizeof(X360_WIRELESS_PAD_NAME)))
     {
-      // In Windows, rename joysticks that are named XONE_PAD_NAME.
-      // Such controllers are registered using ginput_register_joystick().
-      // It's currently not possible to distinguish Xbox One controllers
-      // from Xbox 360 controllers, as Xinput does not provide controller names.
-      name = "X360 Controller";
-      joysticks[i].type = GE_JS_XONEPAD;
+      // rename Xbox 360 wireless controller
+      name = X360_PAD_NAME;
     }
 #endif
 
@@ -120,18 +98,6 @@ static void get_joysticks()
     {
       // Not found => the virtual index is 0.
       joysticks[i].virtualIndex = 0;
-    }
-    if(joysticks[i].type == GE_JS_OTHER)
-    {
-      // Determine the joystick type.
-      for (j = 0; (unsigned int) j < sizeof(js_types) / sizeof(*js_types); ++j)
-      {
-        if (!strcmp(joysticks[i].name, js_types[j].name))
-        {
-          joysticks[i].type = js_types[j].type;
-          break;
-        }
-      }
     }
     i++;
   }
@@ -438,22 +404,6 @@ int ginput_keyboard_virtual_id(int id)
     return keyboards[id].virtualIndex;
   }
   return 0;
-}
-
-/*
- * \brief Tell if a joystick is a sixaxis / dualshock / navigation controller given its index.
- * 
- * \param id  the joystick index (in the [0..GE_MAX_DEVICES[ range)
- * 
- * \return 1 if it is such a joystick, 0 otherwise.
- */
-GE_JS_Type ginput_get_js_type(int id)
-{
-  if (id >= 0 && id < GE_MAX_DEVICES)
-  {
-    return joysticks[id].type;
-  }
-  return GE_JS_OTHER;
 }
 
 /*

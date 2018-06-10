@@ -43,6 +43,7 @@ struct joystick_device {
     int id; // the id of the joystick in the generated events
     int fd; // the opened joystick, or -1 in case the joystick was created using the js_add() function
     char* name; // the name of the joystick
+    int isSixaxis;
     struct {
         unsigned short button_nb; // the base index of the generated hat buttons equals the number of physical buttons
         int hat_value[ABS_HAT3Y - ABS_HAT0X]; // the current hat values
@@ -141,7 +142,7 @@ static void js_process_event(struct joystick_device * device, struct js_event* j
             /*
              * Ugly patch for the sixaxis.
              */
-            if (ginput_get_js_type(evt.jaxis.which) == GE_JS_SIXAXIS && evt.jaxis.axis > 3 && evt.jaxis.axis < 23) {
+            if (device->isSixaxis && evt.jaxis.axis > 3 && evt.jaxis.axis < 23) {
                 evt.jaxis.value = (evt.jaxis.value + 32767) / 2;
             }
         }
@@ -275,6 +276,22 @@ static int open_haptic(struct joystick_device * device, int fd_ev) {
     return 0;
 }
 
+#define SIXAXIS_NAME "Sony PLAYSTATION(R)3 Controller"
+#define NAVIGATION_NAME "Sony Navigation Controller"
+#define BT_SIXAXIS_NAME "PLAYSTATION(R)3 Controller" // QtSixa name prefix (end contains the bdaddr)
+
+int isSixaxis(const char * name) {
+
+    if (!strncmp(name, SIXAXIS_NAME, sizeof(SIXAXIS_NAME))) {
+        return 1;
+    } else if (!strncmp(name, NAVIGATION_NAME, sizeof(NAVIGATION_NAME))) {
+        return 1;
+    } else if (!strncmp(name, BT_SIXAXIS_NAME, sizeof(BT_SIXAXIS_NAME) - 1)) {
+        return 1;
+    }
+    return 0;
+}
+
 static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Event*)) {
 
     int ret = 0;
@@ -346,6 +363,7 @@ static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Ev
                 device->id = j_num;
                 indexToJoystick[j_num] = device;
                 device->name = strdup(name);
+                device->isSixaxis = isSixaxis(name);
                 device->fd = fd_js;
                 device->force_feedback.fd = -1;
                 device->hat_info.button_nb = buttons;

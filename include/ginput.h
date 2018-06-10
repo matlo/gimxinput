@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2016 Mathieu Laurendeau <mat.lau@laposte.net>
+ Copyright (c) 2018 Mathieu Laurendeau <mat.lau@laposte.net>
  License: GPLv3
  */
 
@@ -414,15 +414,6 @@ typedef enum
   GE_MK_MODE_SINGLE_INPUT
 } GE_MK_Mode;
 
-typedef enum
-{
-  GE_JS_OTHER,
-  GE_JS_SIXAXIS,
-  GE_JS_DS4,
-  GE_JS_360PAD,
-  GE_JS_XONEPAD,
-} GE_JS_Type;
-
 #define EVENT_BUFFER_SIZE 256
 
 #define AXIS_X 0
@@ -450,7 +441,6 @@ int ginput_get_device_id(GE_Event*);
 const char * ginput_joystick_name(int);
 int ginput_joystick_virtual_id(int);
 void ginput_set_joystick_used(int);
-GE_JS_Type ginput_get_js_type(int id);
 int ginput_register_joystick(const char* name, unsigned int haptic, int (*haptic_cb)(const GE_Event * event));
 
 const char * ginput_mouse_button_name(int);

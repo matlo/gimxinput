@@ -26,8 +26,6 @@
 #define BT_SIXAXIS_NAME "PLAYSTATION(R)3 Controller"
 #define DUALSHOCK4_NAME "Sony Computer Entertainment Wireless Controller"
 #define DUALSHOCK4_V2_NAME "Sony Interactive Entertainment Wireless Controller"
-#define X360_WIRELESS_PAD_NAME "Xbox 360 Wireless Receiver"
-#define X360_PAD_NAME "Microsoft X-Box 360 pad"
 #endif
 
 GLOG_INST(GLOG_NAME)
@@ -74,11 +72,6 @@ static void get_joysticks()
     {
       // Rename Dualshock 4 v2.
       name = DUALSHOCK4_NAME;
-    }
-    else if (!strncmp(name, X360_WIRELESS_PAD_NAME, sizeof(X360_WIRELESS_PAD_NAME)))
-    {
-      // rename Xbox 360 wireless controller
-      name = X360_PAD_NAME;
     }
 #endif
 

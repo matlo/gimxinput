@@ -324,7 +324,7 @@ static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Ev
     // scan /dev/input for jsX devices
     n_js = scandir(DEV_INPUT, &namelist_js, is_js_device, alphasort);
     if (n_js >= 0) {
-        for (i = 0; i < n_js && !ret; ++i) {
+        for (i = 0; i < n_js; ++i) {
 #define JSINIT_ERROR() \
       close(fd_js); \
       free(namelist_js[i]); \
@@ -380,11 +380,10 @@ static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Ev
                 }
                 GLIST_ADD(js_devices, device)
                 j_num++;
-            } else if (errno == EACCES) {
+            } else {
                 if (GLOG_LEVEL(GLOG_NAME,ERROR)) {
-                    fprintf(stderr, "can't open %s: %s\n", js_file, strerror(errno));
+                    fprintf(stderr, "%s:%d %s: opening %s failed with error: %m\n", __FILE__, __LINE__, __func__, js_file);
                 }
-                ret = -1;
             }
 
             free(namelist_js[i]);

@@ -260,7 +260,6 @@ static int mkb_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_E
     int ret = 0;
     int i;
     int fd;
-    char device[sizeof("/dev/input/event255")];
 
     if (poll_interface->fp_register == NULL) {
         PRINT_ERROR_OTHER("fp_register is NULL")
@@ -289,7 +288,8 @@ static int mkb_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_E
     n = scandir(DEV_INPUT, &namelist, is_event_file, alphasort);
     if (n >= 0) {
         for (i = 0; i < n; ++i) {
-            snprintf(device, sizeof(device), "%s/%s", DEV_INPUT, namelist[i]->d_name);
+        	char device[strlen(DEV_INPUT) + sizeof('/') + strlen(namelist[i]->d_name) + 1];
+        	snprintf(device, sizeof(device), "%s/%s", DEV_INPUT, namelist[i]->d_name);
 
             fd = open(device, O_RDONLY | O_NONBLOCK);
             if (fd != -1) {

@@ -207,13 +207,12 @@ static int is_event_dir(const struct dirent *dir) {
 
 static int open_evdev(const char * js_name) {
 
-    char dir_event[sizeof("/sys/class/input/js255/device/")];
-    char event[sizeof("/sys/class/input/js255/device/event255")];
     struct dirent **namelist_ev;
     int n_ev;
     int j;
     int fd_ev = -1;
 
+    char dir_event[strlen("/sys/class/input/") + strlen(js_name) + strlen("/device/") + 1];
     snprintf(dir_event, sizeof(dir_event), "/sys/class/input/%s/device/", js_name);
 
     // scan /sys/class/input/jsX/device/ for eventY devices
@@ -221,6 +220,7 @@ static int open_evdev(const char * js_name) {
     if (n_ev >= 0) {
         for (j = 0; j < n_ev; ++j) {
             if (fd_ev == -1) {
+                char event[strlen(DEV_INPUT) + sizeof('/') + strlen(namelist_ev[j]->d_name) + 1];
                 snprintf(event, sizeof(event), "%s/%s", DEV_INPUT, namelist_ev[j]->d_name);
                 // open the eventY device
                 fd_ev = open(event, O_RDWR | O_NONBLOCK);
@@ -297,7 +297,6 @@ static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Ev
     int ret = 0;
     int i;
     int fd_js;
-    char js_file[sizeof("/dev/input/js255")];
     char name[1024] = { 0 };
 
     struct dirent **namelist_js;
@@ -336,6 +335,7 @@ static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Ev
                 continue;
             }
 
+            char js_file[strlen(DEV_INPUT) + sizeof('/') + strlen(namelist_js[i]->d_name) + 1];
             snprintf(js_file, sizeof(js_file), "%s/%s", DEV_INPUT, namelist_js[i]->d_name);
 
             // open the jsX device

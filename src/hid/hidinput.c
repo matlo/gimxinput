@@ -72,7 +72,11 @@ static int close_callback(void * user) {
 
     struct hidinput_device * device = (struct hidinput_device *) user;
 
-    int ret = device->callbacks.close(device->callbacks.user);
+    int ret = 0;
+
+    if (device->callbacks.close != NULL) {
+        ret = device->callbacks.close(device->callbacks.user);
+    }
 
     close_device(device);
 

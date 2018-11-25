@@ -276,7 +276,7 @@ static int register_raw_input(int state) {
       return 0;
     }
 
-    DWORD dwFlags = state ? (RIDEV_NOLEGACY | RIDEV_INPUTSINK) : RIDEV_REMOVE;
+    DWORD dwFlags = state ? RIDEV_NOLEGACY : RIDEV_REMOVE;
     HWND hwndTarget = state ? raw_hwnd : 0;
 
     RAWINPUTDEVICE rid[] = {

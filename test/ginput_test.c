@@ -20,17 +20,26 @@
 
 #define PERIOD 10000//microseconds
 
+#ifdef WIN32
+#define GE_MKB_SOURCE_MAX GE_MKB_SOURCE_LOW_LEVEL_HOOKS
+#else
+#define GE_MKB_SOURCE_MAX GE_MKB_SOURCE_WINDOW_SYSTEM
+#endif
+
 int mkb_select() {
 
   printf("Available mouse and keyboard input methods:\n");
   printf("%d none\n", GE_MKB_SOURCE_NONE);
   printf("%d physical\n", GE_MKB_SOURCE_PHYSICAL);
   printf("%d window system\n", GE_MKB_SOURCE_WINDOW_SYSTEM);
+#ifdef WIN32
+  printf("%d low level hooks\n", GE_MKB_SOURCE_LOW_LEVEL_HOOKS);
+#endif
 
   printf("Select the input method: ");
   fflush(stdout);
   unsigned int choice = UINT_MAX;
-  if (scanf("%d", &choice) == 1 && choice <= GE_MKB_SOURCE_WINDOW_SYSTEM) {
+  if (scanf("%d", &choice) == 1 && choice <= GE_MKB_SOURCE_MAX) {
     return choice;
   }
 

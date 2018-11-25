@@ -18,6 +18,7 @@ static int mkb_source = -1;
 
 struct mkb_source * source_physical = NULL;
 struct mkb_source * source_window = NULL;
+struct mkb_source * source_llhooks = NULL;
 
 struct mkb_source * mkbsource = NULL;
 
@@ -30,6 +31,9 @@ void ev_register_mkb_source(struct mkb_source * source)
         break;
     case GE_MKB_SOURCE_WINDOW_SYSTEM:
         source_window = source;
+        break;
+    case GE_MKB_SOURCE_LOW_LEVEL_HOOKS:
+        source_llhooks = source;
         break;
     }
 }
@@ -79,6 +83,15 @@ int ev_init(const GPOLL_INTERFACE * poll_interface __attribute__((unused)), unsi
     if (mkbsource == NULL)
     {
       PRINT_ERROR_OTHER("no window mkb source available")
+      return -1;
+    }
+  }
+  else if (mkb_source == GE_MKB_SOURCE_LOW_LEVEL_HOOKS)
+  {
+    mkbsource = source_llhooks;
+    if (mkbsource == NULL)
+    {
+      PRINT_ERROR_OTHER("no low level hooks mkb source available")
       return -1;
     }
   }
@@ -161,7 +174,10 @@ const char* ev_keyboard_name(int id)
 
 void ev_grab_input(int mode)
 {
-  int i;
+  if (mkb_source == GE_MKB_SOURCE_LOW_LEVEL_HOOKS)
+  {
+    return;
+  }
 
   if(mode == GE_GRAB_ON)
   {
@@ -193,7 +209,7 @@ void ev_grab_input(int mode)
         ClipCursor(&_clip);
       }
 
-      i = 10;
+      int i = 10;
       while(i > 0 && ShowCursor(FALSE) >= 0) { i--; }
     }
   }
@@ -201,7 +217,7 @@ void ev_grab_input(int mode)
   {
     ClipCursor(NULL);
 
-    i = 10;
+    int i = 10;
     while(i > 0 && ShowCursor(TRUE) < 0) { i--; }
 
     if(mkb_source == GE_MKB_SOURCE_WINDOW_SYSTEM)
@@ -217,8 +233,11 @@ void ev_sync_process()
   {
     jsource->sync_process();
   }
-  // on Windows mkbsource->sync_process is either the rawinput callback
-  // or NULL (sdlinput)
+  if (mkbsource != source_physical // do not call mkbsource->sync_process if it is the rawinput callback
+          && mkbsource != NULL && mkbsource->sync_process != NULL)
+  {
+    mkbsource->sync_process();
+  }
 }
 
 int ev_joystick_get_haptic(int joystick)

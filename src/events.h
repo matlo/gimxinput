@@ -14,6 +14,9 @@
 
 #define RAWINPUT_CLASS_NAME "RawInputCatcher"
 #define RAWINPUT_WINDOW_NAME "RawInputMsgWindow"
+
+#define DIRECTINPUT_CLASS_NAME "DirectInputCatcher"
+#define DIRECTINPUT_WINDOW_NAME "DirectInputMsgWindow"
 #endif
 
 #define MAX_EVENTS 256

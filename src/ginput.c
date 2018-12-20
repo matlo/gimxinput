@@ -152,6 +152,7 @@ static void get_mkbs()
  * \param mkb_src  GE_MKB_SOURCE_PHYSICAL: use evdev under Linux and raw inputs under Windows.
  *                 GE_MKB_SOURCE_WINDOW_SYSTEM: use X inputs under Linux and the SDL library under Windows.
  *                 GE_MKB_SOURCE_LOW_LEVEL_HOOKS: use low level hooks under Windows.
+ *                 GE_MKB_SOURCE_DINPUT: use directinput under Windows.
  * \param callback the callback to process input events (cannot be NULL)
  *
  * \return  0 if successful
@@ -160,7 +161,7 @@ static void get_mkbs()
 int ginput_init(const GPOLL_INTERFACE * poll_interface, unsigned char mkb_src, int(*callback)(GE_Event*))
 {
 #ifndef WIN32
-  if (mkb_src == GE_MKB_SOURCE_LOW_LEVEL_HOOKS)
+  if (mkb_src == GE_MKB_SOURCE_LOW_LEVEL_HOOKS || mkb_src == GE_MKB_SOURCE_DINPUT)
   {
       return -1;
   }
@@ -226,7 +227,7 @@ void ginput_grab_toggle()
 /*
  * \brief Grab the mouse.
  *
- * \remark Not available for GE_MKB_SOURCE_LOW_LEVEL_HOOKS.
+ * \remark Not available for GE_MKB_SOURCE_LOW_LEVEL_HOOKS / GE_MKB_SOURCE_DINPUT.
  */
 void ginput_grab()
 {

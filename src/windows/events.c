@@ -19,6 +19,7 @@ static int mkb_source = -1;
 struct mkb_source * source_physical = NULL;
 struct mkb_source * source_window = NULL;
 struct mkb_source * source_llhooks = NULL;
+struct mkb_source * source_dinput = NULL;
 
 struct mkb_source * mkbsource = NULL;
 
@@ -34,6 +35,9 @@ void ev_register_mkb_source(struct mkb_source * source)
         break;
     case GE_MKB_SOURCE_LOW_LEVEL_HOOKS:
         source_llhooks = source;
+        break;
+    case GE_MKB_SOURCE_DINPUT:
+        source_dinput = source;
         break;
     }
 }
@@ -92,6 +96,15 @@ int ev_init(const GPOLL_INTERFACE * poll_interface __attribute__((unused)), unsi
     if (mkbsource == NULL)
     {
       PRINT_ERROR_OTHER("no low level hooks mkb source available")
+      return -1;
+    }
+  }
+  else if (mkb_source == GE_MKB_SOURCE_DINPUT)
+  {
+    mkbsource = source_dinput;
+    if (mkbsource == NULL)
+    {
+      PRINT_ERROR_OTHER("no dinput mkb source available")
       return -1;
     }
   }
@@ -174,7 +187,7 @@ const char* ev_keyboard_name(int id)
 
 void ev_grab_input(int mode)
 {
-  if (mkb_source == GE_MKB_SOURCE_LOW_LEVEL_HOOKS)
+  if (mkb_source == GE_MKB_SOURCE_LOW_LEVEL_HOOKS || mkb_source == GE_MKB_SOURCE_DINPUT)
   {
     return;
   }

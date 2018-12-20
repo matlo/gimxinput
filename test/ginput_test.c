@@ -21,7 +21,7 @@
 #define PERIOD 10000//microseconds
 
 #ifdef WIN32
-#define GE_MKB_SOURCE_MAX GE_MKB_SOURCE_LOW_LEVEL_HOOKS
+#define GE_MKB_SOURCE_MAX GE_MKB_SOURCE_DINPUT
 #else
 #define GE_MKB_SOURCE_MAX GE_MKB_SOURCE_WINDOW_SYSTEM
 #endif
@@ -34,6 +34,7 @@ int mkb_select() {
   printf("%d window system\n", GE_MKB_SOURCE_WINDOW_SYSTEM);
 #ifdef WIN32
   printf("%d low level hooks\n", GE_MKB_SOURCE_LOW_LEVEL_HOOKS);
+  printf("%d dinput\n", GE_MKB_SOURCE_DINPUT);
 #endif
 
   printf("Select the input method: ");

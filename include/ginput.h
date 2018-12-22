@@ -306,7 +306,8 @@ typedef enum {
        GE_JOYCONSTANTFORCE,     /**< Joystick constant force */
        GE_JOYSPRINGFORCE,     /**< Joystick spring force */
        GE_JOYDAMPERFORCE,     /**< Joystick damper force */
-       GE_QUIT,     /**< Joystick button released */
+       GE_QUIT,
+       GE_FOCUS_LOST,
 } GE_EventType;
 
 typedef struct GE_KeyboardEvent {
@@ -427,7 +428,7 @@ extern "C" {
 #endif
 
 int ginput_init(const GPOLL_INTERFACE * poll_interface, unsigned char mkb_src, int(*fp)(GE_Event*));
-void ginput_grab_toggle();
+int ginput_grab_toggle();
 void ginput_grab();
 void ginput_release_unused();
 void ginput_quit();

@@ -265,6 +265,10 @@ static LRESULT CALLBACK RawWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lP
         if(!buff) {
             wminput_handler(wParam, lParam);
         }
+    } else if (Msg == WM_ACTIVATE) {
+        if (wParam == WA_INACTIVE) {
+            pollres = 1;
+        }
     }
 
     return DefWindowProc(hWnd, Msg, wParam, lParam);

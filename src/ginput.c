@@ -202,7 +202,7 @@ void ginput_release_unused()
 /*
  * \brief Grab/Release the mouse cursor (Windows) or grab/release all keyboard and mouse event devices (Linux).
  */
-void ginput_grab_toggle()
+int ginput_grab_toggle()
 {
   if (grab)
   {
@@ -214,6 +214,7 @@ void ginput_grab_toggle()
     ev_grab_input(GE_GRAB_ON);
     grab = 1;
   }
+  return grab;
 }
 
 /*

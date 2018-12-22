@@ -16,10 +16,12 @@ GLOG_GET(GLOG_NAME)
 
 static int mkb_source = -1;
 
-struct mkb_source * source_physical = NULL;
-struct mkb_source * source_window = NULL;
+static struct mkb_source * source_physical = NULL;
+static struct mkb_source * source_window = NULL;
 
-struct mkb_source * mkbsource = NULL;
+static struct mkb_source * mkbsource = NULL;
+
+static int(*event_callback)(GE_Event*) = NULL;
 
 void ev_register_mkb_source(struct mkb_source * source)
 {
@@ -47,6 +49,11 @@ void ev_register_js_source(struct js_source * source)
     jsource = source;
 }
 
+static void rawinput_error_callback() {
+    GE_Event event = { .type = GE_FOCUS_LOST };
+    event_callback(&event);
+}
+
 #define CHECK_JS_SOURCE(RETVAL) \
     if (jsource == NULL) { \
         PRINT_ERROR_OTHER("no joystick source available") \
@@ -63,6 +70,8 @@ int ev_init(const GPOLL_INTERFACE * poll_interface __attribute__((unused)), unsi
     return -1;
   }
 
+  event_callback = callback;
+
   if (mkb_source == GE_MKB_SOURCE_PHYSICAL)
   {
     mkbsource = source_physical;
@@ -71,7 +80,7 @@ int ev_init(const GPOLL_INTERFACE * poll_interface __attribute__((unused)), unsi
       PRINT_ERROR_OTHER("no physical mkb source available")
       return -1;
     }
-    gpoll_set_rawinput_callback(mkbsource->sync_process);
+    gpoll_set_rawinput_callback(mkbsource->sync_process, rawinput_error_callback);
   }
   else if (mkb_source == GE_MKB_SOURCE_WINDOW_SYSTEM)
   {

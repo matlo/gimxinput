@@ -306,6 +306,7 @@ typedef enum {
        GE_JOYCONSTANTFORCE,     /**< Joystick constant force */
        GE_JOYSPRINGFORCE,     /**< Joystick spring force */
        GE_JOYDAMPERFORCE,     /**< Joystick damper force */
+       GE_JOYSINEFORCE,     /**< Joystick sine force */
        GE_QUIT,
        GE_FOCUS_LOST,
 } GE_EventType;
@@ -383,6 +384,17 @@ typedef struct GE_JoyConditionForceEvent {
   uint16_t deadband;
 } GE_JoyConditionForceEvent;
 
+typedef struct GE_JoyPeriodicForceEvent {
+  uint8_t type;     /**< GE_JOYSINEFORCE */
+  uint8_t which;  /**< The joystick device index */
+  struct {
+    int32_t direction; /**< polar coordinates (0 = North, 9000 = East, 18000 = South, 27000 = West) */
+    uint16_t period;
+    int16_t magnitude;
+    int16_t offset;
+  } sine;
+} GE_JoyPeriodicForceEvent;
+
 typedef union GE_Event {
   struct
   {
@@ -398,6 +410,7 @@ typedef union GE_Event {
   GE_JoyRumbleEvent jrumble;
   GE_JoyConstantForceEvent jconstant;
   GE_JoyConditionForceEvent jcondition;
+  GE_JoyPeriodicForceEvent jperiodic;
 } GE_Event;
 
 typedef enum
@@ -407,6 +420,7 @@ typedef enum
   GE_HAPTIC_CONSTANT = 0x02,
   GE_HAPTIC_SPRING   = 0x04,
   GE_HAPTIC_DAMPER   = 0x08,
+  GE_HAPTIC_SINE     = 0x10,
 } GE_HapticType;
 
 typedef enum

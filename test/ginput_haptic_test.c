@@ -49,6 +49,9 @@ void display_haptic() {
         if (effects & GE_HAPTIC_DAMPER) {
             printf(" damper,");
         }
+        if (effects & GE_HAPTIC_SINE) {
+            printf(" sine,");
+        }
         printf(" }\n");
         ++i;
     }
@@ -187,6 +190,31 @@ void haptic_task() {
         }
         return;
     }
+    if (haptic & GE_HAPTIC_SINE) {
+        event.jconstant.type = GE_JOYSINEFORCE;
+        switch (step) {
+        case 0:
+            // weak / right
+            event.jperiodic.sine.direction = 9000;
+            event.jperiodic.sine.period = 0;
+            event.jperiodic.sine.magnitude = 0;
+            event.jperiodic.sine.offset = SHRT_MAX / 2;
+            START("Playing sine force (weak rumble).\n", &event)
+            break;
+        case 1:
+            // strong / left
+            event.jperiodic.sine.direction = 0;
+            event.jperiodic.sine.period = 0;
+            event.jperiodic.sine.magnitude = 0;
+            event.jperiodic.sine.offset = SHRT_MAX / 2;
+            START("Playing sine force (strong rumble).\n", &event)
+            break;
+        case 2:
+            STOP("Stop sine force.\n", GE_HAPTIC_SINE, &event)
+            break;
+        }
+        return;
+    }
 
     if (haptic == GE_HAPTIC_NONE) {
         set_done();
@@ -208,7 +236,7 @@ int main(int argc __attribute__((unused)), char* argv[] __attribute__((unused)))
     display_haptic();
 
     if (js_select()) {
-        exit(-1);
+        set_done(); // exit(-1) provokes a segfault... gimxinput cleanup tries to clean DirectInput effects already cleaned
     }
 
     GTIMER_CALLBACKS timer_callbacks = {

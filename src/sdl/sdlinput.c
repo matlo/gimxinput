@@ -3,6 +3,7 @@
  License: GPLv3
  */
 
+#include <math.h>
 #include "keycodes.h"
 
 #include <SDL.h>
@@ -15,6 +16,11 @@
 
 #define PRINT_ERROR_SDL(msg) \
   if (GLOG_LEVEL(GLOG_NAME,ERROR)) { \
+    fprintf(stderr, "%s:%d %s: %s failed with error: %s\n", __FILE__, __LINE__, __func__, msg, SDL_GetError()); \
+  }
+
+#define PRINT_INFO_SDL(msg) \
+  if (GLOG_LEVEL(GLOG_NAME,INFO)) { \
     fprintf(stderr, "%s:%d %s: %s failed with error: %s\n", __FILE__, __LINE__, __func__, msg, SDL_GetError()); \
   }
 
@@ -41,7 +47,8 @@ static struct
   { SDL_HAPTIC_LEFTRIGHT, GE_HAPTIC_RUMBLE },
   { SDL_HAPTIC_CONSTANT,  GE_HAPTIC_CONSTANT },
   { SDL_HAPTIC_SPRING,    GE_HAPTIC_SPRING },
-  { SDL_HAPTIC_DAMPER,    GE_HAPTIC_DAMPER }
+  { SDL_HAPTIC_DAMPER,    GE_HAPTIC_DAMPER },
+  { SDL_HAPTIC_SINE,      GE_HAPTIC_SINE }
 };
 
 static int js_init = 0;
@@ -66,6 +73,7 @@ struct joystick_device {
     struct {
         SDL_Haptic* haptic;
         unsigned int effects;
+        GE_HapticType emulate_rumble;
         int ids[sizeof(effect_types) / sizeof(*effect_types)];
         int (*haptic_cb)(const GE_Event * event);
     } force_feedback;
@@ -117,6 +125,9 @@ static int get_effect_id(struct joystick_device * device, GE_HapticType type) {
     case GE_HAPTIC_DAMPER:
         i = 3;
         break;
+    case GE_HAPTIC_SINE:
+        i = 4;
+        break;
     case GE_HAPTIC_NONE:
         break;
     }
@@ -152,6 +163,11 @@ static void open_haptic(struct joystick_device * device, SDL_Joystick* joystick)
                     effect.condition.direction.type = SDL_HAPTIC_FIRST_AXIS;
                     effect.condition.direction.dir[0] = 0;
                     break;
+                case SDL_HAPTIC_SINE:
+                    effect.periodic.length = SDL_HAPTIC_INFINITY;
+                    effect.periodic.direction.type = SDL_HAPTIC_POLAR;
+                    effect.periodic.direction.dir[0] = 0;
+                    break;
                 }
                 int effect_id = SDL_HapticNewEffect(haptic, &effect);
                 if (effect_id >= 0) {
@@ -159,8 +175,40 @@ static void open_haptic(struct joystick_device * device, SDL_Joystick* joystick)
                     device->force_feedback.effects |= effect_types[i].type;
                     device->force_feedback.ids[i] = effect_id;
                 } else {
-                    PRINT_ERROR_SDL("SDL_HapticNewEffect")
+                    PRINT_INFO_SDL("SDL_HapticNewEffect")
                 }
+            }
+        }
+        if ( !(device->force_feedback.effects & GE_HAPTIC_RUMBLE)
+                && (device->force_feedback.effects & GE_HAPTIC_SINE)) {
+            SDL_HapticEffect effect = { .type = SDL_HAPTIC_SINE, };
+            effect.periodic.length = SDL_HAPTIC_INFINITY;
+            effect.periodic.direction.type = SDL_HAPTIC_POLAR;
+            effect.periodic.direction.dir[0] = 0;
+            int effect_id = SDL_HapticNewEffect(haptic, &effect);
+            if (effect_id >= 0) {
+                device->force_feedback.haptic = haptic;
+                device->force_feedback.effects |= GE_HAPTIC_RUMBLE;
+                device->force_feedback.ids[0] = effect_id;
+                device->force_feedback.emulate_rumble = GE_HAPTIC_SINE;
+            } else {
+                PRINT_INFO_SDL("SDL_HapticNewEffect")
+            }
+        }
+        if ( !(device->force_feedback.effects & GE_HAPTIC_RUMBLE)
+                && (device->force_feedback.effects & GE_HAPTIC_CONSTANT)) {
+            SDL_HapticEffect effect = { .type = SDL_HAPTIC_CONSTANT, };
+            effect.constant.length = SDL_HAPTIC_INFINITY;
+            effect.constant.direction.type = SDL_HAPTIC_POLAR;
+            effect.constant.direction.dir[0] = 0;
+            int effect_id = SDL_HapticNewEffect(haptic, &effect);
+            if (effect_id >= 0) {
+                device->force_feedback.haptic = haptic;
+                device->force_feedback.effects |= GE_HAPTIC_RUMBLE;
+                device->force_feedback.ids[0] = effect_id;
+                device->force_feedback.emulate_rumble = GE_HAPTIC_CONSTANT;
+            } else {
+                PRINT_INFO_SDL("SDL_HapticNewEffect")
             }
         }
         if (device->force_feedback.effects == GE_HAPTIC_NONE) {
@@ -795,10 +843,34 @@ static int sdlinput_joystick_set_haptic(const GE_Event * event) {
     case GE_JOYRUMBLE:
         if (effects & GE_HAPTIC_RUMBLE) {
             effect_id = get_effect_id(joystick, GE_HAPTIC_RUMBLE);
-            effect.leftright.type = SDL_HAPTIC_LEFTRIGHT;
-            effect.leftright.length = 0;
-            effect.leftright.large_magnitude = event->jrumble.strong;
-            effect.leftright.small_magnitude = event->jrumble.weak;
+            if (joystick->force_feedback.emulate_rumble == GE_HAPTIC_NONE) {
+                effect.leftright.type = SDL_HAPTIC_LEFTRIGHT;
+                effect.leftright.length = SDL_HAPTIC_INFINITY;
+                effect.leftright.large_magnitude = event->jrumble.strong;
+                effect.leftright.small_magnitude = event->jrumble.weak;
+            } else if (joystick->force_feedback.emulate_rumble == GE_HAPTIC_SINE) {
+                effect.periodic.type = SDL_HAPTIC_SINE;
+                effect.periodic.direction.type = SDL_HAPTIC_POLAR;
+                if (event->jrumble.strong != 0) {
+                    effect.periodic.direction.dir[0] = atan(event->jrumble.weak / event->jrumble.strong) * 100;
+                } else if (event->jrumble.weak != 0) {
+                    effect.periodic.direction.dir[0] = 9000;
+                }
+                effect.periodic.length = SDL_HAPTIC_INFINITY;
+                effect.periodic.period = 0;
+                effect.periodic.magnitude = 0;
+                effect.periodic.offset = hypot(event->jrumble.strong, event->jrumble.weak);
+            } else if (joystick->force_feedback.emulate_rumble == GE_HAPTIC_CONSTANT) {
+                effect.constant.type = SDL_HAPTIC_CONSTANT;
+                effect.constant.direction.type = SDL_HAPTIC_POLAR;
+                if (event->jrumble.strong != 0) {
+                    effect.constant.direction.dir[0] = atan(event->jrumble.weak / event->jrumble.strong) * 100;
+                } else if (event->jrumble.weak != 0) {
+                    effect.constant.direction.dir[0] = 9000;
+                }
+                effect.constant.length = SDL_HAPTIC_INFINITY;
+                effect.constant.level = hypot(event->jrumble.strong, event->jrumble.weak);
+            }
         }
         break;
     case GE_JOYCONSTANTFORCE:
@@ -837,6 +909,18 @@ static int sdlinput_joystick_set_haptic(const GE_Event * event) {
             effect.condition.left_sat[0] = event->jcondition.saturation.left;
             effect.condition.right_coeff[0] = event->jcondition.coefficient.right;
             effect.condition.left_coeff[0] = event->jcondition.coefficient.left;
+        }
+        break;
+    case GE_JOYSINEFORCE:
+        if (effects & GE_HAPTIC_SINE) {
+            effect_id = get_effect_id(joystick, GE_HAPTIC_SINE);
+            effect.periodic.type = SDL_HAPTIC_SINE;
+            effect.periodic.direction.type = SDL_HAPTIC_POLAR;
+            effect.periodic.direction.dir[0] = event->jperiodic.sine.direction;
+            effect.periodic.length = SDL_HAPTIC_INFINITY;
+            effect.periodic.period = event->jperiodic.sine.period;
+            effect.periodic.magnitude =  event->jperiodic.sine.magnitude;
+            effect.periodic.offset =  event->jperiodic.sine.offset;
         }
         break;
     default:

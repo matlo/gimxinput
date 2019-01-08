@@ -198,16 +198,9 @@ void haptic_task() {
             event.jperiodic.sine.period = USHRT_MAX / 2;
             event.jperiodic.sine.magnitude = SHRT_MAX / 2;
             event.jperiodic.sine.offset = 0;
-            START("Playing sine force (weak rumble).\n", &event)
+            START("Playing sine force.\n", &event)
             break;
         case 1:
-            event.jperiodic.sine.direction = 0;
-            event.jperiodic.sine.period = USHRT_MAX / 2;
-            event.jperiodic.sine.magnitude = SHRT_MAX / 2;
-            event.jperiodic.sine.offset = 0;
-            START("Playing sine force (strong rumble).\n", &event)
-            break;
-        case 2:
             STOP("Stop sine force.\n", GE_HAPTIC_SINE, &event)
             break;
         }

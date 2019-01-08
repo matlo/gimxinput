@@ -388,7 +388,7 @@ typedef struct GE_JoyPeriodicForceEvent {
   uint8_t type;     /**< GE_JOYSINEFORCE */
   uint8_t which;  /**< The joystick device index */
   struct {
-    int32_t direction; /**< polar coordinates (0 = North, 9000 = East, 18000 = South, 27000 = West) */
+    int32_t direction; /**< polar coordinates (0 = North, 9000 = East, 18000 = South, 27000 = West) - not available on GNU/Linux */
     uint16_t period;
     int16_t magnitude;
     int16_t offset;

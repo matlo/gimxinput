@@ -36,7 +36,8 @@ static struct {
         { FF_RUMBLE,   GE_HAPTIC_RUMBLE },
         { FF_CONSTANT, GE_HAPTIC_CONSTANT },
         { FF_SPRING,   GE_HAPTIC_SPRING },
-        { FF_DAMPER,   GE_HAPTIC_DAMPER }
+        { FF_DAMPER,   GE_HAPTIC_DAMPER },
+        { FF_PERIODIC, GE_HAPTIC_SINE }
 };
 
 struct joystick_device {
@@ -90,6 +91,9 @@ int get_effect_id(struct joystick_device * device, GE_HapticType type) {
         break;
     case GE_HAPTIC_DAMPER:
         i = 3;
+        break;
+    case GE_HAPTIC_SINE:
+        i = 4;
         break;
     case GE_HAPTIC_NONE:
         break;
@@ -260,6 +264,9 @@ static int open_haptic(struct joystick_device * device, int fd_ev) {
         if (test_bit(effect_types[i].jstype, features)) {
             // Upload the effect.
             struct ff_effect effect = { .type = effect_types[i].jstype, .id = -1 };
+            if (effect_types[i].type == GE_HAPTIC_SINE) {
+                effect.u.periodic.waveform = FF_SINE;
+            }
             if (ioctl(fd_ev, EVIOCSFF, &effect) != -1) {
                 // Store the id so that the effect can be updated and played later.
                 device->force_feedback.fd = fd_ev;
@@ -459,6 +466,16 @@ static int js_set_haptic(const GE_Event * event) {
                 effect.u.condition[0].left_coeff = event->jcondition.coefficient.left;
                 effect.u.condition[0].center = event->jcondition.center;
                 effect.u.condition[0].deadband = event->jcondition.deadband;
+            }
+            break;
+        case GE_JOYSINEFORCE:
+            if (effects & GE_HAPTIC_SINE) {
+                effect.id = get_effect_id(device, GE_HAPTIC_SINE);
+                effect.type = FF_PERIODIC;
+                effect.u.periodic.waveform = FF_SINE;
+                effect.u.periodic.magnitude = event->jperiodic.sine.magnitude;
+                effect.u.periodic.offset = event->jperiodic.sine.offset;
+                effect.u.periodic.period = event->jperiodic.sine.period;
             }
             break;
         default:

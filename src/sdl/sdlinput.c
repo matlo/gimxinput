@@ -19,8 +19,8 @@
     fprintf(stderr, "%s:%d %s: %s failed with error: %s\n", __FILE__, __LINE__, __func__, msg, SDL_GetError()); \
   }
 
-#define PRINT_INFO_SDL(msg) \
-  if (GLOG_LEVEL(GLOG_NAME,INFO)) { \
+#define PRINT_DEBUG_SDL(msg) \
+  if (GLOG_LEVEL(GLOG_NAME,DEBUG)) { \
     fprintf(stderr, "%s:%d %s: %s failed with error: %s\n", __FILE__, __LINE__, __func__, msg, SDL_GetError()); \
   }
 
@@ -42,13 +42,14 @@ static struct
 {
   unsigned int sdltype;
   GE_HapticType type;
+  const char * name;
 } effect_types[] =
 {
-  { SDL_HAPTIC_LEFTRIGHT, GE_HAPTIC_RUMBLE },
-  { SDL_HAPTIC_CONSTANT,  GE_HAPTIC_CONSTANT },
-  { SDL_HAPTIC_SPRING,    GE_HAPTIC_SPRING },
-  { SDL_HAPTIC_DAMPER,    GE_HAPTIC_DAMPER },
-  { SDL_HAPTIC_SINE,      GE_HAPTIC_SINE }
+  { SDL_HAPTIC_LEFTRIGHT, GE_HAPTIC_RUMBLE,   "rumble"   },
+  { SDL_HAPTIC_CONSTANT,  GE_HAPTIC_CONSTANT, "constant" },
+  { SDL_HAPTIC_SPRING,    GE_HAPTIC_SPRING,   "spring"   },
+  { SDL_HAPTIC_DAMPER,    GE_HAPTIC_DAMPER,   "damper"   },
+  { SDL_HAPTIC_SINE,      GE_HAPTIC_SINE,     "sine"     }
 };
 
 static int js_init = 0;
@@ -175,7 +176,31 @@ static void open_haptic(struct joystick_device * device, SDL_Joystick* joystick)
                     device->force_feedback.effects |= effect_types[i].type;
                     device->force_feedback.ids[i] = effect_id;
                 } else {
-                    PRINT_INFO_SDL("SDL_HapticNewEffect")
+                    PRINT_DEBUG_SDL("SDL_HapticNewEffect")
+                    if (GLOG_LEVEL(GLOG_NAME,DEBUG)) {
+                        fprintf(stderr, "Failed to create %s effect for %s %i\n",
+                                effect_types[i].name, SDL_JoystickName(joystick), device->index);
+                    }
+                }
+            }
+        }
+        if ( !(device->force_feedback.effects & GE_HAPTIC_RUMBLE)
+                && (device->force_feedback.effects & GE_HAPTIC_CONSTANT)) {
+            SDL_HapticEffect effect = { .type = SDL_HAPTIC_CONSTANT, };
+            effect.constant.length = SDL_HAPTIC_INFINITY;
+            effect.constant.direction.type = SDL_HAPTIC_POLAR;
+            effect.constant.direction.dir[0] = 0;
+            int effect_id = SDL_HapticNewEffect(haptic, &effect);
+            if (effect_id >= 0) {
+                device->force_feedback.haptic = haptic;
+                device->force_feedback.effects |= GE_HAPTIC_RUMBLE;
+                device->force_feedback.ids[0] = effect_id;
+                device->force_feedback.emulate_rumble = GE_HAPTIC_CONSTANT;
+            } else {
+                PRINT_DEBUG_SDL("SDL_HapticNewEffect")
+                if (GLOG_LEVEL(GLOG_NAME,DEBUG)) {
+                    fprintf(stderr, "Failed to emulate rumble effect with constant effect for %s %i\n",
+                            SDL_JoystickName(joystick), device->index);
                 }
             }
         }
@@ -192,23 +217,11 @@ static void open_haptic(struct joystick_device * device, SDL_Joystick* joystick)
                 device->force_feedback.ids[0] = effect_id;
                 device->force_feedback.emulate_rumble = GE_HAPTIC_SINE;
             } else {
-                PRINT_INFO_SDL("SDL_HapticNewEffect")
-            }
-        }
-        if ( !(device->force_feedback.effects & GE_HAPTIC_RUMBLE)
-                && (device->force_feedback.effects & GE_HAPTIC_CONSTANT)) {
-            SDL_HapticEffect effect = { .type = SDL_HAPTIC_CONSTANT, };
-            effect.constant.length = SDL_HAPTIC_INFINITY;
-            effect.constant.direction.type = SDL_HAPTIC_POLAR;
-            effect.constant.direction.dir[0] = 0;
-            int effect_id = SDL_HapticNewEffect(haptic, &effect);
-            if (effect_id >= 0) {
-                device->force_feedback.haptic = haptic;
-                device->force_feedback.effects |= GE_HAPTIC_RUMBLE;
-                device->force_feedback.ids[0] = effect_id;
-                device->force_feedback.emulate_rumble = GE_HAPTIC_CONSTANT;
-            } else {
-                PRINT_INFO_SDL("SDL_HapticNewEffect")
+                PRINT_DEBUG_SDL("SDL_HapticNewEffect")
+                if (GLOG_LEVEL(GLOG_NAME,DEBUG)) {
+                    fprintf(stderr, "Failed to emulate rumble effect with sine effect for %s %i\n",
+                            SDL_JoystickName(joystick), device->index);
+                }
             }
         }
         if (device->force_feedback.effects == GE_HAPTIC_NONE) {

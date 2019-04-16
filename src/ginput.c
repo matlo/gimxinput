@@ -26,6 +26,10 @@
 #define BT_SIXAXIS_NAME "PLAYSTATION(R)3 Controller"
 #define DUALSHOCK4_NAME "Sony Computer Entertainment Wireless Controller"
 #define DUALSHOCK4_V2_NAME "Sony Interactive Entertainment Wireless Controller"
+
+#define XBOX_CONTROLLER_NAME "Microsoft X-Box One pad"
+#define XBOX_CONTROLLER_V2_NAME "Microsoft X-Box One pad (Firmware 2015)"
+#define XBOX_CONTROLLER_V3_NAME "Microsoft X-Box One S pad"
 #endif
 
 GLOG_INST(GLOG_NAME)
@@ -72,6 +76,14 @@ static void get_joysticks()
     {
       // Rename Dualshock 4 v2.
       name = DUALSHOCK4_NAME;
+    }
+    else if (!strncmp(name, XBOX_CONTROLLER_V2_NAME, sizeof(XBOX_CONTROLLER_V2_NAME)))
+    {
+      name = XBOX_CONTROLLER_NAME;
+    }
+    else if (!strncmp(name, XBOX_CONTROLLER_V3_NAME, sizeof(XBOX_CONTROLLER_V3_NAME)))
+    {
+      name = XBOX_CONTROLLER_NAME;
     }
 #endif
 

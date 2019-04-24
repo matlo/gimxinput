@@ -237,7 +237,7 @@ int main(int argc __attribute__((unused)), char* argv[] __attribute__((unused)))
             .fp_remove = REMOVE_FUNCTION,
     };
     struct gtimer * timer = gtimer_start(NULL, PERIOD, &timer_callbacks);
-    if (timer < 0) {
+    if (timer == NULL) {
         set_done();
     }
 

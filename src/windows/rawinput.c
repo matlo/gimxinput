@@ -326,7 +326,8 @@ static int init_event_queue(void)
     POINT cursor_pos;
     GetCursorPos(&cursor_pos);
     
-    raw_hwnd = CreateWindow(class_name, win_name, WS_POPUP | WS_VISIBLE | WS_SYSMENU, cursor_pos.x, cursor_pos.y, 1, 1, NULL, NULL, hInstance, NULL);
+    // mouse capture is broken with a 1x1 window and "fix scaling for apps" enabled
+    raw_hwnd = CreateWindow(class_name, win_name, WS_POPUP | WS_VISIBLE | WS_SYSMENU, cursor_pos.x, cursor_pos.y, 2, 2, NULL, NULL, hInstance, NULL);
 
     if (raw_hwnd == NULL) {
       PRINT_ERROR_GETLASTERROR("CreateWindow")

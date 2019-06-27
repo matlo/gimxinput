@@ -24,8 +24,9 @@
     fprintf(stderr, "%s:%d %s: %s failed with error: %s\n", __FILE__, __LINE__, __func__, msg, SDL_GetError()); \
   }
 
-#define SCREEN_WIDTH  1
-#define SCREEN_HEIGHT 1
+// mouse capture is broken with a 1x1 window and "fix scaling for apps" enabled
+#define SCREEN_WIDTH  2
+#define SCREEN_HEIGHT 2
 
 GLOG_GET(GLOG_NAME)
 

@@ -3,8 +3,8 @@ CXXFLAGS += -O3
 
 CPPFLAGS += -I../..
 
-LDFLAGS += -L../../gimxinput -L../../gimxhid -L../../gimxpoll -L../../gimxtimer
-LDLIBS += -lgimxinput -lgimxhid -lgimxpoll -lgimxtimer
+LDFLAGS += -L../../gimxinput -L../../gimxhid -L../../gimxpoll -L../../gimxlog -L../../gimxtime -L../../gimxtimer
+LDLIBS += -lgimxinput -lgimxhid -lgimxpoll -lgimxlog -lgimxtime -lgimxtimer
 
 BINS=ginput_test ginput_haptic_test
 ifneq ($(OS),Windows_NT)

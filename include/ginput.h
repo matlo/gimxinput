@@ -19,7 +19,6 @@
 typedef void* HANDLE;
 #else
 #include "ginput_linux.h"
-#include <sys/time.h>
 #endif
 
 #define GE_MKB_SOURCE_NONE 0

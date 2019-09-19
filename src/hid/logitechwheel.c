@@ -13,6 +13,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#ifdef WIN32
+#include <windows.h>
+#endif
 
 #define USB_VENDOR_ID_LOGITECH                  0x046d
 

@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
+#include <getopt.h>
 
 #include <gimxinput/include/ginput.h>
 #include <gimxpoll/include/gpoll.h>
@@ -38,9 +39,59 @@ int mkb_select() {
   return -1;
 }
 
+int process_event2(GE_Event* event __attribute__((unused))) {
+    if (event->type == GE_KEYDOWN && event->key.keysym == GE_KEY_ESC)
+    {
+        done = 1;
+        fflush(stdout);
+        return 1;
+    }
+    return 0;
+}
+
+static void usage() {
+  fprintf(stderr, "Usage: ./ginput_test [-n period_count] [-q] [-d]\n");
+  exit(EXIT_FAILURE);
+}
+
+static unsigned int periods = 0;
+static int quiet = 0;
+static int debug = 0;
+
+/*
+ * Reads command-line arguments.
+ */
+static int read_args(int argc, char* argv[]) {
+
+  int opt;
+  while ((opt = getopt(argc, argv, "dn:q")) != -1) {
+    switch (opt) {
+    case 'd':
+      debug = 1;
+      break;
+    case 'n':
+      periods = atoi(optarg);
+      break;
+    case 'q':
+      quiet = 1;
+      break;
+    default: /* '?' */
+      usage();
+      break;
+    }
+  }
+  return 0;
+}
+
 int main(int argc __attribute__((unused)), char* argv[] __attribute__((unused)))
 {
   setup_handlers();
+
+  read_args(argc, argv);
+
+  if (debug) {
+    glog_set_all_levels(E_GLOG_LEVEL_DEBUG);
+  }
 
   int mkb_source = mkb_select();
 
@@ -53,7 +104,7 @@ int main(int argc __attribute__((unused)), char* argv[] __attribute__((unused)))
           .fp_register = REGISTER_FUNCTION,
           .fp_remove = REMOVE_FUNCTION
   };
-  if (ginput_init(&poll_interface, mkb_source, process_event) < 0)
+  if (ginput_init(&poll_interface, mkb_source, quiet ? process_event2 : process_event) < 0)
   {
     exit(-1);
   }
@@ -82,6 +133,13 @@ int main(int argc __attribute__((unused)), char* argv[] __attribute__((unused)))
     ginput_periodic_task();
 
     //do something periodically
+
+    if (periods > 0) {
+        --periods;
+        if (periods == 0) {
+            set_done();
+        }
+    }
   }
 
   if (timer != NULL) {

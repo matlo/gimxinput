@@ -16,6 +16,7 @@
 #include <gimxlog/include/glog.h>
 #include <stdint.h>
 #include <string.h>
+#include <limits.h>
 
 #define STEAM_CONTROLLER_VID            0x28de
 #define WIRELESS_STEAM_CONTROLLER_PID   0x1142

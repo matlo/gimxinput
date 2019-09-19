@@ -1,5 +1,15 @@
-CFLAGS += -O3
-CXXFLAGS += -O3
+ifneq ($(DEBUG),yes)
+CFLAGS += -Wall -Wextra -O3
+CXXFLAGS += -Wall -Wextra -O3
+else
+ifneq ($(OS),Windows_NT)
+CFLAGS += -Wall -Wextra -O0 -g -fsanitize=address -fno-omit-frame-pointer
+CXXFLAGS += -Wall -Wextra -O0 -g -fsanitize=address -fno-omit-frame-pointer
+else
+CFLAGS += -Wall -Wextra -O0 -g -fno-omit-frame-pointer
+CXXFLAGS += -Wall -Wextra -O0 -g -fno-omit-frame-pointer
+endif
+endif
 
 CPPFLAGS += -I../..
 

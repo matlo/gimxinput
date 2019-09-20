@@ -373,7 +373,7 @@ int ginput_register_joystick(const char* name, unsigned int effects, int (*hapti
 {
   if(initialized)
   {
-    PRINT_ERROR_OTHER("this function can only be called before ginput_init")
+    PRINT_ERROR_OTHER("this function can only be called before ginput_init");
     return -1;
   }
 

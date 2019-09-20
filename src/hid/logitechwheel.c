@@ -707,7 +707,7 @@ static struct hidinput_device_internal *  open_device(const struct ghid_device_i
 
     struct hidinput_device_internal * device = calloc(1, sizeof(*device));
     if (device == NULL) {
-        PRINT_ERROR_ALLOC_FAILED("calloc")
+        PRINT_ERROR_ALLOC_FAILED("calloc");
         ghid_close(hid);
         return NULL;
     }

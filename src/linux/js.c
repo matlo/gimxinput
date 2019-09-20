@@ -256,7 +256,7 @@ static int open_haptic(struct joystick_device * device, int fd_ev) {
 
     unsigned long features[4];
     if (ioctl(fd_ev, EVIOCGBIT(EV_FF, sizeof(features)), features) == -1) {
-        PRINT_ERROR_ERRNO("ioctl EV_FF")
+        PRINT_ERROR_ERRNO("ioctl EV_FF");
         return -1;
     }
     unsigned int i;
@@ -273,7 +273,7 @@ static int open_haptic(struct joystick_device * device, int fd_ev) {
                 device->force_feedback.effects |= effect_types[i].type;
                 device->force_feedback.ids[i] = effect.id;
             } else {
-                PRINT_ERROR_ERRNO("ioctl EVIOCSFF")
+                PRINT_ERROR_ERRNO("ioctl EVIOCSFF");
             }
         }
     }
@@ -310,17 +310,17 @@ static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Ev
     int n_js;
 
     if (poll_interface->fp_register == NULL) {
-        PRINT_ERROR_OTHER("fp_register is NULL")
+        PRINT_ERROR_OTHER("fp_register is NULL");
         return -1;
     }
 
     if (poll_interface->fp_remove == NULL) {
-        PRINT_ERROR_OTHER("fp_remove is NULL")
+        PRINT_ERROR_OTHER("fp_remove is NULL");
         return -1;
     }
 
     if (callback == NULL) {
-        PRINT_ERROR_OTHER("callback is NULL")
+        PRINT_ERROR_OTHER("callback is NULL");
         return -1;
     }
 
@@ -337,7 +337,7 @@ static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Ev
       continue;
 
             if (j_num == sizeof(indexToJoystick) / sizeof(*indexToJoystick)) {
-                PRINT_ERROR_OTHER("cannot add other joysticks: max device number reached")
+                PRINT_ERROR_OTHER("cannot add other joysticks: max device number reached");
                 free(namelist_js[i]);
                 continue;
             }
@@ -350,7 +350,7 @@ static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Ev
             if (fd_js != -1) {
                 // get the device name
                 if (ioctl(fd_js, JSIOCGNAME(sizeof(name) - 1), name) < 0) {
-                    PRINT_ERROR_ERRNO("ioctl EVIOCGNAME")
+                    PRINT_ERROR_ERRNO("ioctl EVIOCGNAME");
                     JSINIT_ERROR()
                 }
                 // get the number of buttons and the axis map, to allow converting hat axes to buttons
@@ -364,7 +364,7 @@ static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Ev
                 }
                 struct joystick_device * device = calloc(1, sizeof(*device));
                 if (device == NULL) {
-                    PRINT_ERROR_ALLOC_FAILED("calloc")
+                    PRINT_ERROR_ALLOC_FAILED("calloc");
                     JSINIT_ERROR()
                 }
                 device->id = j_num;
@@ -484,14 +484,14 @@ static int js_set_haptic(const GE_Event * event) {
         if (effect.id != -1) {
             // Update the effect.
             if (ioctl(fd, EVIOCSFF, &effect) == -1) {
-                PRINT_ERROR_ERRNO("ioctl EVIOCSFF")
+                PRINT_ERROR_ERRNO("ioctl EVIOCSFF");
                 ret = -1;
             }
             struct input_event play = { .type = EV_FF, .value = 1, /* play: 1, stop: 0 */
             .code = effect.id };
             // Play the effect.
             if (write(fd, (const void*) &play, sizeof(play)) == -1) {
-                PRINT_ERROR_ERRNO("write")
+                PRINT_ERROR_ERRNO("write");
                 ret = -1;
             }
         }
@@ -572,7 +572,7 @@ static int js_add(const char * name, unsigned int effects, int (*haptic_cb)(cons
             GLIST_ADD(js_devices, device)
             ++j_num;
         } else {
-            PRINT_ERROR_ALLOC_FAILED("calloc")
+            PRINT_ERROR_ALLOC_FAILED("calloc");
         }
     }
     return index;

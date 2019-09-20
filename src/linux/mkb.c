@@ -88,19 +88,19 @@ static int mkb_read_type(struct mkb_device * device, int fd) {
     int has_scroll = 0;
 
     if (ioctl(fd, EVIOCGNAME(sizeof(name) - 1), name) < 0) {
-        PRINT_ERROR_ERRNO("ioctl EVIOCGNAME")
+        PRINT_ERROR_ERRNO("ioctl EVIOCGNAME");
         return -1;
     }
 
     len = ioctl(fd, EVIOCGBIT(EV_REL, sizeof(rel_bitmask)), rel_bitmask);
     if (len < 0) {
-        PRINT_ERROR_ERRNO("ioctl EVIOCGBIT")
+        PRINT_ERROR_ERRNO("ioctl EVIOCGBIT");
         return -1;
     }
 
     len = ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(key_bitmask)), key_bitmask);
     if (len < 0) {
-        PRINT_ERROR_ERRNO("ioctl EVIOCGBIT")
+        PRINT_ERROR_ERRNO("ioctl EVIOCGBIT");
         return -1;
     }
 
@@ -130,7 +130,7 @@ static int mkb_read_type(struct mkb_device * device, int fd) {
 
     device->name = strdup(name);
     if (device->name == NULL) {
-        PRINT_ERROR_ERRNO("strdup")
+        PRINT_ERROR_ERRNO("strdup");
         return -1;
     }
 
@@ -262,12 +262,12 @@ static int mkb_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_E
     int fd;
 
     if (poll_interface->fp_register == NULL) {
-        PRINT_ERROR_OTHER("fp_register is NULL")
+        PRINT_ERROR_OTHER("fp_register is NULL");
         return -1;
     }
 
     if (poll_interface->fp_remove == NULL) {
-        PRINT_ERROR_OTHER("fp_remove is NULL")
+        PRINT_ERROR_OTHER("fp_remove is NULL");
         return -1;
     }
 
@@ -275,7 +275,7 @@ static int mkb_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_E
     m_num = 0;
 
     if (callback == NULL) {
-        PRINT_ERROR_OTHER("callback is NULL")
+        PRINT_ERROR_OTHER("callback is NULL");
         return -1;
     }
 
@@ -311,7 +311,7 @@ static int mkb_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_E
                         free(device);
                     }
                 } else {
-                    PRINT_ERROR_ALLOC_FAILED("calloc")
+                    PRINT_ERROR_ALLOC_FAILED("calloc");
                     close(fd);
                 }
             } else {
@@ -324,7 +324,7 @@ static int mkb_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_E
         }
         free(namelist);
     } else {
-        PRINT_ERROR_ERRNO("scandir")
+        PRINT_ERROR_ERRNO("scandir");
         ret = -1;
     }
 

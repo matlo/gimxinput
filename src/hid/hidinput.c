@@ -94,7 +94,7 @@ int hidinput_register(s_hidinput_driver * driver) {
 
     void * ptr = realloc(drivers, (nb_drivers + 1) * sizeof(*drivers));
     if (ptr == NULL) {
-        PRINT_ERROR_ALLOC_FAILED("realloc")
+        PRINT_ERROR_ALLOC_FAILED("realloc");
         return -1;
     }
     drivers = ptr;
@@ -106,17 +106,17 @@ int hidinput_register(s_hidinput_driver * driver) {
 int hidinput_init(const GPOLL_INTERFACE * poll_interface, int(*callback)(GE_Event*)) {
 
     if (callback == NULL) {
-      PRINT_ERROR_OTHER("callback is NULL")
+      PRINT_ERROR_OTHER("callback is NULL");
       return -1;
     }
 
     if (poll_interface->fp_register == NULL) {
-        PRINT_ERROR_OTHER("fp_register_fd is NULL")
+        PRINT_ERROR_OTHER("fp_register_fd is NULL");
         return -1;
     }
 
     if (poll_interface->fp_remove == NULL) {
-        PRINT_ERROR_OTHER("fp_remove is NULL")
+        PRINT_ERROR_OTHER("fp_remove is NULL");
         return -1;
     }
 
@@ -160,7 +160,7 @@ int hidinput_init(const GPOLL_INTERFACE * poll_interface, int(*callback)(GE_Even
                                 GLIST_ADD(hidinput_devices, device)
                             }
                         } else {
-                            PRINT_ERROR_ALLOC_FAILED("calloc")
+                            PRINT_ERROR_ALLOC_FAILED("calloc");
                             drivers[driver]->close(device_internal);
                         }
                     }

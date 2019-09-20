@@ -14,13 +14,13 @@ GLOG_GET(GLOG_NAME)
 int ev_init(unsigned char mkb_src, int(*callback)(GE_Event*))
 {
   if (callback == NULL) {
-    PRINT_ERROR_OTHER("callback cannot be NULL")
+    PRINT_ERROR_OTHER("callback cannot be NULL");
     return -1;
   }
 
   if (mkb_src == GE_MKB_SOURCE_PHYSICAL)
   {
-    PRINT_ERROR_OTHER("Physical events are not available on this platform.")
+    PRINT_ERROR_OTHER("Physical events are not available on this platform.");
     return -1;
   }
 

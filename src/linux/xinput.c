@@ -208,17 +208,17 @@ static int xinput_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(G
     int k_num = 0;
 
     if (callback == NULL) {
-        PRINT_ERROR_OTHER("callback is NULL")
+        PRINT_ERROR_OTHER("callback is NULL");
         return -1;
     }
 
     if (poll_interface->fp_register == NULL) {
-        PRINT_ERROR_OTHER("fp_register is NULL")
+        PRINT_ERROR_OTHER("fp_register is NULL");
         return -1;
     }
 
     if (poll_interface->fp_remove == NULL) {
-        PRINT_ERROR_OTHER("fp_remove is NULL")
+        PRINT_ERROR_OTHER("fp_remove is NULL");
         return -1;
     }
 
@@ -233,12 +233,12 @@ static int xinput_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(G
     dpy = XOpenDisplay(NULL);
 
     if (!dpy) {
-        PRINT_ERROR_OTHER("Failed to open display.\n")
+        PRINT_ERROR_OTHER("Failed to open display.\n");
         return -1;
     }
 
     if (!XQueryExtension(dpy, "XInputExtension", &xi_opcode, &event, &error)) {
-        PRINT_ERROR_OTHER("X Input extension not available.\n")
+        PRINT_ERROR_OTHER("X Input extension not available.\n");
         return -1;
     }
 
@@ -286,7 +286,7 @@ static int xinput_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(G
 
         struct xinput_device * device = calloc(1, sizeof(*device));
         if (device == NULL) {
-            PRINT_ERROR_ALLOC_FAILED("calloc")
+            PRINT_ERROR_ALLOC_FAILED("calloc");
             continue;
         }
 

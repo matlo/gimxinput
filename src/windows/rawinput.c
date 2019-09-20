@@ -299,7 +299,7 @@ static int register_raw_input(int state) {
     };
 
     if (RegisterRawInputDevices(rid, sizeof(rid) / sizeof(*rid), sizeof(*rid)) == FALSE) {
-        PRINT_ERROR_GETLASTERROR("RegisterRawInputDevices")
+        PRINT_ERROR_GETLASTERROR("RegisterRawInputDevices");
         return -1;
     }
 
@@ -330,7 +330,7 @@ static int init_event_queue(void)
     raw_hwnd = CreateWindow(class_name, win_name, WS_POPUP | WS_VISIBLE | WS_SYSMENU, cursor_pos.x, cursor_pos.y, 2, 2, NULL, NULL, hInstance, NULL);
 
     if (raw_hwnd == NULL) {
-      PRINT_ERROR_GETLASTERROR("CreateWindow")
+      PRINT_ERROR_GETLASTERROR("CreateWindow");
       return 0;
     }
 
@@ -375,7 +375,7 @@ static int get_devinfos() {
   const DWORD flags = DIGCF_ALLCLASSES | DIGCF_PRESENT;
   hdevinfo = SetupDiGetClassDevs(NULL, NULL, NULL, flags);
   if (hdevinfo == INVALID_HANDLE_VALUE) {
-    PRINT_ERROR_GETLASTERROR("SetupDiGetClassDevs")
+    PRINT_ERROR_GETLASTERROR("SetupDiGetClassDevs");
     return -1;
   }
   
@@ -389,14 +389,14 @@ static int get_devinfos() {
       if (result == FALSE && GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
         char * buf = malloc(bufsize);
         if (buf == NULL) {
-          PRINT_ERROR_ALLOC_FAILED("malloc")
+          PRINT_ERROR_ALLOC_FAILED("malloc");
           continue;
         }
         result = SetupDiGetDeviceInstanceId(hdevinfo, &data, buf, bufsize, NULL);
         if (result == TRUE) {
           void * ptr = realloc(devinfos, (nb_devinfos + 1) * sizeof(*devinfos));
           if (ptr == NULL) {
-            PRINT_ERROR_ALLOC_FAILED("malloc")
+            PRINT_ERROR_ALLOC_FAILED("malloc");
             free(buf);
             continue;
           }
@@ -405,16 +405,16 @@ static int get_devinfos() {
           devinfos[nb_devinfos].data = data;
           ++nb_devinfos;
         } else {
-          PRINT_ERROR_GETLASTERROR("SetupDiGetDeviceInstanceId")
+          PRINT_ERROR_GETLASTERROR("SetupDiGetDeviceInstanceId");
           free(buf);
         }
       } else {
-        PRINT_ERROR_GETLASTERROR("SetupDiGetDeviceInstanceId")
+        PRINT_ERROR_GETLASTERROR("SetupDiGetDeviceInstanceId");
       }
     } else if (GetLastError() == ERROR_NO_MORE_ITEMS) {
       break;
     } else {
-      PRINT_ERROR_GETLASTERROR("SetupDiEnumDeviceInfo")
+      PRINT_ERROR_GETLASTERROR("SetupDiEnumDeviceInfo");
     }
   }
 
@@ -457,13 +457,13 @@ static char * utf16le_to_utf8(const unsigned char * inbuf)
       if (outbuf != NULL) {
          int res = WideCharToMultiByte(CP_UTF8, 0, (LPCWSTR ) inbuf, -1, outbuf, outsize, NULL, NULL);
          if (res == 0) {
-             PRINT_ERROR_GETLASTERROR("WideCharToMultiByte")
+             PRINT_ERROR_GETLASTERROR("WideCharToMultiByte");
              free(outbuf);
              outbuf = NULL;
          }
       }
   } else {
-    PRINT_ERROR_GETLASTERROR("WideCharToMultiByte")
+    PRINT_ERROR_GETLASTERROR("WideCharToMultiByte");
   }
 
   return outbuf;
@@ -479,12 +479,12 @@ static char * get_dev_name_by_instance(const char * devinstance) {
       unsigned char desc[size];
       result = SetupDiGetDeviceRegistryPropertyW(hdevinfo, devdata, SPDRP_DEVICEDESC, NULL, desc, size, NULL);
       if (result == FALSE) {
-        PRINT_ERROR_GETLASTERROR("SetupDiGetDeviceRegistryProperty")
+        PRINT_ERROR_GETLASTERROR("SetupDiGetDeviceRegistryProperty");
       } else {
         return utf16le_to_utf8(desc);
       }
     } else {
-      PRINT_ERROR_GETLASTERROR("SetupDiGetDeviceRegistryProperty")
+      PRINT_ERROR_GETLASTERROR("SetupDiGetDeviceRegistryProperty");
     }
   }
   
@@ -499,7 +499,7 @@ static void init_device(const RAWINPUTDEVICELIST * dev) {
 
   UINT count = 0;
   if (GetRawInputDeviceInfo(dev->hDevice, RIDI_DEVICENAME, NULL, &count) == (UINT)-1) {
-    PRINT_ERROR_GETLASTERROR("GetRawInputDeviceInfo")
+    PRINT_ERROR_GETLASTERROR("GetRawInputDeviceInfo");
     return;
   }
 
@@ -509,7 +509,7 @@ static void init_device(const RAWINPUTDEVICELIST * dev) {
   char * buf = abuf;
 
   if (GetRawInputDeviceInfo(dev->hDevice, RIDI_DEVICENAME, buf, &count) == (UINT)-1) {
-    PRINT_ERROR_GETLASTERROR("GetRawInputDeviceInfo")
+    PRINT_ERROR_GETLASTERROR("GetRawInputDeviceInfo");
     return;
   }
   
@@ -545,7 +545,7 @@ static void init_device(const RAWINPUTDEVICELIST * dev) {
     }
     void * ptr = realloc(mice, (nb_mice + 1) * sizeof(*mice));
     if (ptr == NULL) {
-      PRINT_ERROR_ALLOC_FAILED("realloc")
+      PRINT_ERROR_ALLOC_FAILED("realloc");
       free(name);
       return;
     }
@@ -561,13 +561,13 @@ static void init_device(const RAWINPUTDEVICELIST * dev) {
     }
     unsigned char * keystates = calloc(MAX_KEYS, sizeof(*keystates));
     if (keystates == NULL) {
-      PRINT_ERROR_ALLOC_FAILED("calloc")
+      PRINT_ERROR_ALLOC_FAILED("calloc");
       free(name);
       return;
     }
     void * ptr = realloc(keyboards, (nb_keyboards + 1) * sizeof(*keyboards));
     if (ptr == NULL) {
-      PRINT_ERROR_ALLOC_FAILED("realloc")
+      PRINT_ERROR_ALLOC_FAILED("realloc");
       free(keystates);
       free(name);
       return;
@@ -603,7 +603,7 @@ void rawinput_quit(void) {
 int rawinput_init(const GPOLL_INTERFACE * poll_interface __attribute__((unused)), int (*callback)(GE_Event*)) {
 
   if (callback == NULL) {
-    PRINT_ERROR_OTHER("callback is NULL")
+    PRINT_ERROR_OTHER("callback is NULL");
     return -1;
   }
 
@@ -616,7 +616,7 @@ int rawinput_init(const GPOLL_INTERFACE * poll_interface __attribute__((unused))
   UINT count = 0;
   UINT result = GetRawInputDeviceList(NULL, &count, sizeof(RAWINPUTDEVICELIST));
   if (result == (UINT)-1) {
-    PRINT_ERROR_GETLASTERROR("GetRawInputDeviceList")
+    PRINT_ERROR_GETLASTERROR("GetRawInputDeviceList");
   } else if (count > 0) {
     RAWINPUTDEVICELIST * devlist = (PRAWINPUTDEVICELIST) malloc(count * sizeof(RAWINPUTDEVICELIST));
     result = GetRawInputDeviceList(devlist, &count, sizeof(RAWINPUTDEVICELIST));

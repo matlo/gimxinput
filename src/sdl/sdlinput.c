@@ -15,14 +15,18 @@
 #include "../events.h"
 
 #define PRINT_ERROR_SDL(msg) \
-  if (GLOG_LEVEL(GLOG_NAME,ERROR)) { \
-    fprintf(stderr, "%s:%d %s: %s failed with error: %s\n", __FILE__, __LINE__, __func__, msg, SDL_GetError()); \
-  }
+    do { \
+        if (GLOG_LEVEL(GLOG_NAME,ERROR)) { \
+            fprintf(stderr, "%s:%d %s: %s failed with error: %s\n", __FILE__, __LINE__, __func__, msg, SDL_GetError()); \
+        } \
+    } while (0)
 
 #define PRINT_DEBUG_SDL(msg) \
-  if (GLOG_LEVEL(GLOG_NAME,DEBUG)) { \
-    fprintf(stderr, "%s:%d %s: %s failed with error: %s\n", __FILE__, __LINE__, __func__, msg, SDL_GetError()); \
-  }
+    do { \
+        if (GLOG_LEVEL(GLOG_NAME,DEBUG)) { \
+            fprintf(stderr, "%s:%d %s: %s failed with error: %s\n", __FILE__, __LINE__, __func__, msg, SDL_GetError()); \
+        } \
+    } while (0)
 
 // mouse capture is broken with a 1x1 window and "fix scaling for apps" enabled
 #define SCREEN_WIDTH  2
@@ -236,19 +240,19 @@ static int js_open(int joystick_index, SDL_GameController ** controller, SDL_Joy
     if (SDL_IsGameController(joystick_index)) {
         *controller = SDL_GameControllerOpen(joystick_index);
         if (*controller == NULL) {
-            PRINT_ERROR_SDL("SDL_GameControllerOpen")
+            PRINT_ERROR_SDL("SDL_GameControllerOpen");
             return -1;
         }
         *joystick = SDL_GameControllerGetJoystick(*controller);
         if (*joystick == NULL) {
-            PRINT_ERROR_SDL("SDL_GameControllerGetJoystick")
+            PRINT_ERROR_SDL("SDL_GameControllerGetJoystick");
             SDL_GameControllerClose(*controller);
             return -1;
         }
     } else {
         *joystick = SDL_JoystickOpen(joystick_index);
         if (*joystick == NULL) {
-            PRINT_ERROR_SDL("SDL_JoystickOpen")
+            PRINT_ERROR_SDL("SDL_JoystickOpen");
             return -1;
         }
     }
@@ -256,9 +260,9 @@ static int js_open(int joystick_index, SDL_GameController ** controller, SDL_Joy
     int instanceId = SDL_JoystickInstanceID(*joystick);
     if (instanceId < 0 || (unsigned int) instanceId >= sizeof(sdlInstanceIdToIndex) / sizeof(*sdlInstanceIdToIndex)) {
         if (instanceId < 0) {
-            PRINT_ERROR_SDL("SDL_JoystickInstanceID")
+            PRINT_ERROR_SDL("SDL_JoystickInstanceID");
         } else {
-            PRINT_ERROR_OTHER("instance id is out of bounds")
+            PRINT_ERROR_OTHER("instance id is out of bounds");
         }
         if (*controller != NULL) {
             SDL_GameControllerClose(*controller);
@@ -285,7 +289,7 @@ static int sdlinput_js_init(const GPOLL_INTERFACE * poll_interface __attribute__
     if (js_init == 0) {
         if (mkb_init == 0) {
             if (SDL_Init(0) < 0) {
-                PRINT_ERROR_SDL("SDL_Init")
+                PRINT_ERROR_SDL("SDL_Init");
                 return -1;
             }
         }
@@ -293,7 +297,7 @@ static int sdlinput_js_init(const GPOLL_INTERFACE * poll_interface __attribute__
     }
 
     if (SDL_InitSubSystem(JOYSTICK_FLAGS) < 0) {
-        PRINT_ERROR_SDL("SDL_InitSubSystem")
+        PRINT_ERROR_SDL("SDL_InitSubSystem");
         return -1;
     }
 
@@ -303,7 +307,7 @@ static int sdlinput_js_init(const GPOLL_INTERFACE * poll_interface __attribute__
 
         struct joystick_device * device = calloc(1, sizeof(*device));
         if (device == NULL) {
-            PRINT_ERROR_ALLOC_FAILED("calloc")
+            PRINT_ERROR_ALLOC_FAILED("calloc");
             continue;
         }
 
@@ -334,7 +338,7 @@ static int sdlinput_js_init(const GPOLL_INTERFACE * poll_interface __attribute__
             if (device->hat_info.joystickNbHat > 0) {
                 device->hat_info.joystickHat = calloc(device->hat_info.joystickNbHat, sizeof(unsigned char));
                 if (device->hat_info.joystickHat == NULL) {
-                    PRINT_ERROR_ALLOC_FAILED("calloc")
+                    PRINT_ERROR_ALLOC_FAILED("calloc");
                 }
             }
         }
@@ -361,7 +365,7 @@ static int sdlinput_mkb_init(const GPOLL_INTERFACE * poll_interface __attribute_
     if (mkb_init == 0) {
         if (js_init == 0) {
             if (SDL_Init(0) < 0) {
-                PRINT_ERROR_SDL("SDL_Init")
+                PRINT_ERROR_SDL("SDL_Init");
                 return -1;
             }
         }
@@ -369,14 +373,14 @@ static int sdlinput_mkb_init(const GPOLL_INTERFACE * poll_interface __attribute_
     }
 
     if (SDL_InitSubSystem(MKB_FLAGS) < 0) {
-        PRINT_ERROR_SDL("SDL_InitSubSystem")
+        PRINT_ERROR_SDL("SDL_InitSubSystem");
         return -1;
     }
 
     window = SDL_CreateWindow(SDLINPUT_WINDOW_NAME, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH,
             SCREEN_HEIGHT, SDL_WINDOW_BORDERLESS);
     if (window == NULL) {
-        PRINT_ERROR_SDL("SDL_CreateWindow")
+        PRINT_ERROR_SDL("SDL_CreateWindow");
         return -1;
     }
 
@@ -440,7 +444,7 @@ static int sdlinput_joystick_register(const char* name, unsigned int effects, in
 
     struct joystick_device * device = calloc(1, sizeof(*device));
     if (device == NULL) {
-        PRINT_ERROR_ALLOC_FAILED("calloc")
+        PRINT_ERROR_ALLOC_FAILED("calloc");
         return -1;
     }
     device->index = js_max_index;
@@ -815,7 +819,7 @@ static int sdl_peep_events(GE_Event* events, int size) {
     int nb = SDL_PeepEvents(sdl_events, size, SDL_GETEVENT, minType, maxType);
 
     if (nb < 0) {
-        PRINT_ERROR_SDL("SDL_PeepEvents")
+        PRINT_ERROR_SDL("SDL_PeepEvents");
         return -1;
     }
 
@@ -838,7 +842,7 @@ static int sdlinput_joystick_get_haptic(int joystick) {
 static int sdlinput_joystick_set_haptic(const GE_Event * event) {
 
     if (event->which >= js_max_index || indexToJoystick[event->which] == NULL) {
-        PRINT_ERROR_OTHER("Invalid joystick id.")
+        PRINT_ERROR_OTHER("Invalid joystick id.");
         return -1;
     }
     struct joystick_device * joystick = indexToJoystick[event->which];
@@ -846,7 +850,7 @@ static int sdlinput_joystick_set_haptic(const GE_Event * event) {
         if (joystick->force_feedback.haptic_cb != NULL) {
             return joystick->force_feedback.haptic_cb(event);
         } else {
-            PRINT_ERROR_OTHER("External joystick has no haptic callback.")
+            PRINT_ERROR_OTHER("External joystick has no haptic callback.");
             return -1;
         }
     }
@@ -942,11 +946,11 @@ static int sdlinput_joystick_set_haptic(const GE_Event * event) {
     }
     if (effect_id != -1) {
         if (SDL_HapticUpdateEffect(joystick->force_feedback.haptic, effect_id, &effect)) {
-            PRINT_ERROR_SDL("SDL_HapticUpdateEffect")
+            PRINT_ERROR_SDL("SDL_HapticUpdateEffect");
             return -1;
         }
         if (SDL_HapticRunEffect(joystick->force_feedback.haptic, effect_id, 1)) {
-            PRINT_ERROR_SDL("SDL_HapticRunEffect")
+            PRINT_ERROR_SDL("SDL_HapticRunEffect");
             return -1;
         }
     }

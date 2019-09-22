@@ -14,8 +14,8 @@ endif
 
 CPPFLAGS += -I../..
 
-LDFLAGS += -L../../gimxinput -L../../gimxhid -L../../gimxpoll -L../../gimxlog -L../../gimxtime -L../../gimxtimer
-LDLIBS += -lgimxinput -lgimxhid -lgimxpoll -lgimxlog -lgimxtime -lgimxtimer
+LDFLAGS += -L../../gimxinput -L../../gimxhid -L../../gimxpoll -L../../gimxlog -L../../gimxtime -L../../gimxtimer -L../../gimxprio
+LDLIBS += -lgimxinput -lgimxhid -lgimxpoll -lgimxlog -lgimxtime -lgimxtimer -lgimxprio
 
 BINS=ginput_test ginput_haptic_test
 ifneq ($(OS),Windows_NT)

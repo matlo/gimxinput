@@ -13,6 +13,8 @@
 #include <gimxinput/include/ginput.h>
 #include <gimxpoll/include/gpoll.h>
 #include <gimxtimer/include/gtimer.h>
+#include <gimxprio/include/gprio.h>
+#include <gimxlog/include/glog.h>
 
 #include <gimxcommon/test/common.h>
 #include <gimxcommon/test/handlers.c>
@@ -50,13 +52,14 @@ int process_event2(GE_Event* event __attribute__((unused))) {
 }
 
 static void usage() {
-  fprintf(stderr, "Usage: ./ginput_test [-n period_count] [-q] [-d]\n");
+  fprintf(stderr, "Usage: ./ginput_test [-d] [-n period_count] [-p] [-q]\n");
   exit(EXIT_FAILURE);
 }
 
 static unsigned int periods = 0;
 static int quiet = 0;
 static int debug = 0;
+static int prio = 0;
 
 /*
  * Reads command-line arguments.
@@ -64,13 +67,16 @@ static int debug = 0;
 static int read_args(int argc, char* argv[]) {
 
   int opt;
-  while ((opt = getopt(argc, argv, "dn:q")) != -1) {
+  while ((opt = getopt(argc, argv, "dn:pq")) != -1) {
     switch (opt) {
     case 'd':
       debug = 1;
       break;
     case 'n':
       periods = atoi(optarg);
+      break;
+    case 'p':
+      prio = 1;
       break;
     case 'q':
       quiet = 1;
@@ -89,13 +95,19 @@ int main(int argc __attribute__((unused)), char* argv[] __attribute__((unused)))
 
   read_args(argc, argv);
 
-  if (debug) {
+  if (debug)
+  {
     glog_set_all_levels(E_GLOG_LEVEL_DEBUG);
   }
 
   int mkb_source = mkb_select();
 
   if (mkb_source < 0)
+  {
+    exit(-1);
+  }
+
+  if (prio && gprio_init() < 0)
   {
     exit(-1);
   }
@@ -147,6 +159,11 @@ int main(int argc __attribute__((unused)), char* argv[] __attribute__((unused)))
   }
 
   ginput_quit();
+
+  if (prio)
+  {
+    gprio_clean();
+  }
 
   printf("Exiting\n");
 

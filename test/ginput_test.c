@@ -107,11 +107,6 @@ int main(int argc __attribute__((unused)), char* argv[] __attribute__((unused)))
     exit(-1);
   }
 
-  if (prio && gprio_init() < 0)
-  {
-    exit(-1);
-  }
-
   GPOLL_INTERFACE poll_interface = {
           .fp_register = REGISTER_FUNCTION,
           .fp_remove = REMOVE_FUNCTION
@@ -138,6 +133,11 @@ int main(int argc __attribute__((unused)), char* argv[] __attribute__((unused)))
     ginput_grab();
   }
 
+  if (prio && gprio_init() < 0)
+  {
+    exit(-1);
+  }
+
   while(!is_done())
   {
     gpoll();
@@ -154,16 +154,16 @@ int main(int argc __attribute__((unused)), char* argv[] __attribute__((unused)))
     }
   }
 
+  if (prio)
+  {
+    gprio_clean();
+  }
+
   if (timer != NULL) {
     gtimer_close(timer);
   }
 
   ginput_quit();
-
-  if (prio)
-  {
-    gprio_clean();
-  }
 
   printf("Exiting\n");
 

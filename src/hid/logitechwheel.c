@@ -67,7 +67,7 @@ static int close_device(struct hidinput_device_internal * device) {
     return 0;
 }
 
-GLIST_INST(struct hidinput_device_internal, lgw_devices);
+static GLIST_INST(struct hidinput_device_internal, lgw_devices);
 GLIST_DESTRUCTOR(lgw_devices, close_device)
 
 #define MAKE_IDS(USB_PRODUCT_ID) \

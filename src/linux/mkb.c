@@ -68,7 +68,7 @@ static int mkb_close_device(void * user) {
     return 0;
 }
 
-GLIST_INST(struct mkb_device, mkb_devices);
+static GLIST_INST(struct mkb_device, mkb_devices);
 GLIST_DESTRUCTOR(mkb_devices, mkb_close_device)
 
 #define LONG_BITS (sizeof(long) * 8)

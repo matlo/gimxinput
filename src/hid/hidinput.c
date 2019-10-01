@@ -42,7 +42,7 @@ static int close_device(struct hidinput_device * device) {
     return 0;
 }
 
-GLIST_INST(struct hidinput_device, hidinput_devices);
+static GLIST_INST(struct hidinput_device, hidinput_devices);
 GLIST_DESTRUCTOR(hidinput_devices, close_device)
 
 static int read_callback(void * user, const void * buf, int status) {

@@ -42,7 +42,7 @@ struct xinput_device
   int keyboard;
   char* name;
   unsigned int index;
-  GLIST_LINK(struct xinput_device)
+  GLIST_LINK(struct xinput_device);
 };
 
 static struct xinput_device * device_index[GE_MAX_DEVICES];
@@ -66,7 +66,8 @@ static int xinput_close(void * user) {
     return 1;
 }
 
-GLIST_INST(struct xinput_device, x_devices, xinput_close)
+GLIST_INST(struct xinput_device, x_devices);
+GLIST_DESTRUCTOR(x_devices, xinput_close)
 
 static inline uint8_t get_button(int detail) {
 

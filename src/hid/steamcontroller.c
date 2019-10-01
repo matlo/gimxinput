@@ -59,7 +59,7 @@ struct hidinput_device_internal {
     struct ghid_device * hid;
     int joystick;
     s_sc_report previous;
-    GLIST_LINK(struct hidinput_device_internal)
+    GLIST_LINK(struct hidinput_device_internal);
 };
 
 static int close_device(struct hidinput_device_internal * device) {
@@ -79,7 +79,8 @@ static int close_device(struct hidinput_device_internal * device) {
     return 0;
 }
 
-GLIST_INST(struct hidinput_device_internal, sc_devices, close_device)
+GLIST_INST(struct hidinput_device_internal, sc_devices);
+GLIST_DESTRUCTOR(sc_devices, close_device)
 
 static s_hidinput_ids ids[] = {
         // check wired controllers first

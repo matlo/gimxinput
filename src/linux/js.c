@@ -60,7 +60,7 @@ struct joystick_device {
         int (*haptic_cb)(const GE_Event * event);
     } force_feedback;
     void * hid;
-    GLIST_LINK(struct joystick_device)
+    GLIST_LINK(struct joystick_device);
 };
 
 static struct joystick_device * indexToJoystick[GE_MAX_DEVICES] = { };
@@ -75,7 +75,8 @@ static int j_num; // the number of joysticks
 
 static int js_close_internal(void * user);
 
-GLIST_INST(struct joystick_device, js_devices, js_close_internal)
+GLIST_INST(struct joystick_device, js_devices);
+GLIST_DESTRUCTOR(js_devices, js_close_internal)
 
 int get_effect_id(struct joystick_device * device, GE_HapticType type) {
     int i = -1;

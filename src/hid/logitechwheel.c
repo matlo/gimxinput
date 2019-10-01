@@ -46,7 +46,7 @@ struct hidinput_device_internal {
 #ifdef UHID
     struct guhid_device * uhid;
 #endif
-    GLIST_LINK(struct hidinput_device_internal)
+    GLIST_LINK(struct hidinput_device_internal);
 };
 
 static int close_device(struct hidinput_device_internal * device) {
@@ -67,7 +67,8 @@ static int close_device(struct hidinput_device_internal * device) {
     return 0;
 }
 
-GLIST_INST(struct hidinput_device_internal, lgw_devices, close_device)
+GLIST_INST(struct hidinput_device_internal, lgw_devices);
+GLIST_DESTRUCTOR(lgw_devices, close_device)
 
 #define MAKE_IDS(USB_PRODUCT_ID) \
     { .vendor_id = USB_VENDOR_ID_LOGITECH, .product_id = USB_PRODUCT_ID, .interface_number = -1 }

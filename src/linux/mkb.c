@@ -39,7 +39,7 @@ struct mkb_device
   int mouse;
   int keyboard;
   char* name;
-  GLIST_LINK(struct mkb_device)
+  GLIST_LINK(struct mkb_device);
 };
 
 static int k_num;
@@ -68,7 +68,8 @@ static int mkb_close_device(void * user) {
     return 0;
 }
 
-GLIST_INST(struct mkb_device, mkb_devices, mkb_close_device)
+GLIST_INST(struct mkb_device, mkb_devices);
+GLIST_DESTRUCTOR(mkb_devices, mkb_close_device)
 
 #define LONG_BITS (sizeof(long) * 8)
 #define NLONGS(x) (((x) + LONG_BITS - 1) / LONG_BITS)

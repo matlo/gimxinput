@@ -92,7 +92,7 @@ struct joystick_device {
         unsigned short vendor;
         unsigned short product;
     } usb_ids;
-    GLIST_LINK(struct joystick_device)
+    GLIST_LINK(struct joystick_device);
 };
 
 static struct joystick_device * indexToJoystick[GE_MAX_DEVICES] = { };
@@ -105,7 +105,8 @@ static struct joystick_device * indexToJoystick[GE_MAX_DEVICES] = { };
 
 static int js_close_internal(void * user);
 
-GLIST_INST(struct joystick_device, sdl_devices, js_close_internal)
+GLIST_INST(struct joystick_device, sdl_devices);
+GLIST_DESTRUCTOR(sdl_devices, js_close_internal)
 
 static struct {
     short x;

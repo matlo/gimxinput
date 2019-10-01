@@ -26,7 +26,7 @@ struct hidinput_device {
         int (* write)(void * user, int transfered);
         int (* close)(void * user);
     } callbacks;
-    GLIST_LINK(struct hidinput_device)
+    GLIST_LINK(struct hidinput_device);
 };
 
 static int close_device(struct hidinput_device * device) {
@@ -42,7 +42,8 @@ static int close_device(struct hidinput_device * device) {
     return 0;
 }
 
-GLIST_INST(struct hidinput_device, hidinput_devices, close_device)
+GLIST_INST(struct hidinput_device, hidinput_devices);
+GLIST_DESTRUCTOR(hidinput_devices, close_device)
 
 static int read_callback(void * user, const void * buf, int status) {
 

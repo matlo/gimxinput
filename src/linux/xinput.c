@@ -59,7 +59,7 @@ static int xinput_close(void * user) {
 
     free(device->name);
 
-    GLIST_REMOVE(x_devices, device)
+    GLIST_REMOVE(x_devices, device);
 
     free(device);
 
@@ -307,7 +307,7 @@ static int xinput_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(G
             ++m_num;
         }
 
-        GLIST_ADD(x_devices, device)
+        GLIST_ADD(x_devices, device);
     }
 
     XIFreeDeviceInfo(xdevices);

@@ -61,7 +61,7 @@ static int mkb_close_device(void * user) {
         close(device->fd);
     }
 
-    GLIST_REMOVE(mkb_devices, device)
+    GLIST_REMOVE(mkb_devices, device);
 
     free(device);
 
@@ -306,7 +306,7 @@ static int mkb_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_E
                         GPOLL_CALLBACKS callbacks = { .fp_read = mkb_process_events, .fp_write = NULL, .fp_close =
                                 mkb_close_device };
                         poll_interface->fp_register(device->fd, device, &callbacks);
-                        GLIST_ADD(mkb_devices, device)
+                        GLIST_ADD(mkb_devices, device);
                     } else {
                         close(fd);
                         free(device);

@@ -60,7 +60,7 @@ static int close_device(struct hidinput_device_internal * device) {
     }
 #endif
 
-    GLIST_REMOVE(lgw_devices, device)
+    GLIST_REMOVE(lgw_devices, device);
 
     free(device);
 
@@ -715,7 +715,7 @@ static struct hidinput_device_internal *  open_device(const struct ghid_device_i
 
     device->hid = hid;
 
-    GLIST_ADD(lgw_devices, device)
+    GLIST_ADD(lgw_devices, device);
 
     const s_hid_info * hid_info = ghid_get_hid_info(device->hid);
     if (hid_info == NULL) {

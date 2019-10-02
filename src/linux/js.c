@@ -386,7 +386,7 @@ static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Ev
                         close(fd_ev); //no need to keep it opened
                     }
                 }
-                GLIST_ADD(js_devices, device)
+                GLIST_ADD(js_devices, device);
                 j_num++;
             } else {
                 if (GLOG_LEVEL(GLOG_NAME,ERROR)) {
@@ -528,7 +528,7 @@ static int js_close_internal(void * user) {
 
     indexToJoystick[device->id] = NULL;
 
-    GLIST_REMOVE(js_devices, device)
+    GLIST_REMOVE(js_devices, device);
 
     free(device);
 
@@ -570,7 +570,7 @@ static int js_add(const char * name, unsigned int effects, int (*haptic_cb)(cons
             device->force_feedback.fd = -1;
             device->force_feedback.effects = effects;
             device->force_feedback.haptic_cb = haptic_cb;
-            GLIST_ADD(js_devices, device)
+            GLIST_ADD(js_devices, device);
             ++j_num;
         } else {
             PRINT_ERROR_ALLOC_FAILED("calloc");

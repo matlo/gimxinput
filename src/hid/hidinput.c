@@ -35,7 +35,7 @@ static int close_device(struct hidinput_device * device) {
         device->driver->close(device->device);
     }
 
-    GLIST_REMOVE(hidinput_devices, device)
+    GLIST_REMOVE(hidinput_devices, device);
 
     free(device);
 
@@ -158,7 +158,7 @@ int hidinput_init(const GPOLL_INTERFACE * poll_interface, int(*callback)(GE_Even
                                 close_device(device);
                                 free(device);
                             } else {
-                                GLIST_ADD(hidinput_devices, device)
+                                GLIST_ADD(hidinput_devices, device);
                             }
                         } else {
                             PRINT_ERROR_ALLOC_FAILED("calloc");

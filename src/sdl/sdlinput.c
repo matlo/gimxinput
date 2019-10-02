@@ -344,7 +344,7 @@ static int sdlinput_js_init(const GPOLL_INTERFACE * poll_interface __attribute__
             }
         }
 
-        GLIST_ADD(sdl_devices, device)
+        GLIST_ADD(sdl_devices, device);
     }
 
     joysticks_opened = js_max_index;
@@ -459,7 +459,7 @@ static int sdlinput_joystick_register(const char* name, unsigned int effects, in
     ++joysticks_opened;
     ++joysticks_registered;
 
-    GLIST_ADD(sdl_devices, device)
+    GLIST_ADD(sdl_devices, device);
 
     return device->index;
 }
@@ -485,7 +485,7 @@ static int js_close_internal(void * user) {
 
     indexToJoystick[device->index] = NULL;
 
-    GLIST_REMOVE(sdl_devices, device)
+    GLIST_REMOVE(sdl_devices, device);
 
     free(device);
 

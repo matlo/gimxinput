@@ -72,7 +72,7 @@ static int close_device(struct hidinput_device_internal * device) {
         // TODO MLA: remove joystick
     }
 
-    GLIST_REMOVE(sc_devices, device)
+    GLIST_REMOVE(sc_devices, device);
 
     free(device);
 
@@ -256,7 +256,7 @@ static struct hidinput_device_internal * open_device(const struct ghid_device_in
 
     device->hid = hid;
 
-    GLIST_ADD(sc_devices, device)
+    GLIST_ADD(sc_devices, device);
 
     return device;
 }

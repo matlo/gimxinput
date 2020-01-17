@@ -106,7 +106,6 @@ static struct joystick_device * indexToJoystick[GE_MAX_DEVICES] = { };
 static int js_close_internal(void * user);
 
 static GLIST_INST(struct joystick_device, sdl_devices);
-GLIST_DESTRUCTOR(sdl_devices, js_close_internal)
 
 static struct {
     short x;

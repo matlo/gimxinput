@@ -76,7 +76,6 @@ static int j_num; // the number of joysticks
 static int js_close_internal(void * user);
 
 static GLIST_INST(struct joystick_device, js_devices);
-GLIST_DESTRUCTOR(js_devices, js_close_internal)
 
 int get_effect_id(struct joystick_device * device, GE_HapticType type) {
     int i = -1;

@@ -67,7 +67,6 @@ static int xinput_close(void * user) {
 }
 
 static GLIST_INST(struct xinput_device, x_devices);
-GLIST_DESTRUCTOR(x_devices, xinput_close)
 
 static inline uint8_t get_button(int detail) {
 

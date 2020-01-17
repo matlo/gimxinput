@@ -43,7 +43,6 @@ static int close_device(struct hidinput_device * device) {
 }
 
 static GLIST_INST(struct hidinput_device, hidinput_devices);
-GLIST_DESTRUCTOR(hidinput_devices, close_device)
 
 static int read_callback(void * user, const void * buf, int status) {
 
@@ -121,10 +120,6 @@ int hidinput_init(const GPOLL_INTERFACE * poll_interface, int(*callback)(GE_Even
         return -1;
     }
 
-    if (ghid_init() < 0) {
-        return -1;
-    }
-
     unsigned int driver;
     for (driver = 0; driver < nb_drivers; ++driver) {
         drivers[driver]->init(callback);
@@ -193,8 +188,6 @@ int hidinput_poll() {
 void hidinput_quit() {
 
     GLIST_CLEAN_ALL(hidinput_devices, close_device)
-
-    ghid_exit();
 }
 
 int hidinput_set_callbacks(void * dev, void * user, int (* write_cb)(void * user, int transfered), int (* close_cb)(void * user)) {

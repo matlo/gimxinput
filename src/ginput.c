@@ -158,16 +158,6 @@ static void get_mkbs()
   }
 }
 
-/*
- * \bried Initializes the library.
- *
- * \param mkb_src  GE_MKB_SOURCE_PHYSICAL: use evdev under Linux and raw inputs under Windows.
- *                 GE_MKB_SOURCE_WINDOW_SYSTEM: use X inputs under Linux and the SDL library under Windows.
- * \param callback the callback to process input events (cannot be NULL)
- *
- * \return 1 if successful
- *         0 in case of error
- */
 int ginput_init(const GPOLL_INTERFACE * poll_interface, unsigned char mkb_src, int(*callback)(GE_Event*))
 {
   if (hidinput_init(poll_interface, callback) < 0)
@@ -194,9 +184,6 @@ int ginput_init(const GPOLL_INTERFACE * poll_interface, unsigned char mkb_src, i
   return 0;
 }
 
-/*
- * \brief Release unused stuff. It currently only releases unused joysticks.
- */
 void ginput_release_unused()
 {
   int i;
@@ -211,9 +198,6 @@ void ginput_release_unused()
   }
 }
 
-/*
- * \brief Grab/Release the mouse cursor (Windows) or grab/release all keyboard and mouse event devices (Linux).
- */
 int ginput_grab_toggle()
 {
   if (grab)
@@ -229,18 +213,12 @@ int ginput_grab_toggle()
   return grab;
 }
 
-/*
- * \brief Grab the mouse.
- */
 void ginput_grab()
 {
   ev_grab_input(GE_GRAB_ON);
   grab = 1;
 }
 
-/*
- * \brief Free the mouse and keyboard names.
- */
 void ginput_free_mk_names()
 {
   int i;
@@ -256,9 +234,6 @@ void ginput_free_mk_names()
   }
 }
 
-/*
- * \brief Quit the library (free allocated data, release devices...).
- */
 void ginput_quit()
 {
   int i;
@@ -280,13 +255,6 @@ void ginput_quit()
   initialized = 0;
 }
 
-/*
- * \brief Get the mouse name for a given index.
- * 
- * \param id  the mouse index (in the [0..GE_MAX_DEVICES[ range).
- * 
- * \return the mouse name if present, NULL otherwise.
- */
 const char * ginput_mouse_name(int id)
 {
   if (id >= 0 && id < GE_MAX_DEVICES)
@@ -296,13 +264,6 @@ const char * ginput_mouse_name(int id)
   return NULL;
 }
 
-/*
- * \brief Get the keyboard name for a given index.
- * 
- * \param id  the keyboard index (in the [0..GE_MAX_DEVICES[ range)
- * 
- * \return the keyboard name if present, NULL otherwise.
- */
 const char * ginput_keyboard_name(int id)
 {
   if (id >= 0 && id < GE_MAX_DEVICES)
@@ -312,13 +273,6 @@ const char * ginput_keyboard_name(int id)
   return NULL;
 }
 
-/*
- * \brief Get the joystick name for a given index.
- * 
- * \param id  the joystick index (in the [0..GE_MAX_DEVICES[ range)
- * 
- * \return the joystick name if present, NULL otherwise.
- */
 const char * ginput_joystick_name(int id)
 {
   if (id >= 0 && id < GE_MAX_DEVICES)
@@ -328,13 +282,6 @@ const char * ginput_joystick_name(int id)
   return NULL;
 }
 
-/*
- * \brief Get the joystick virtual id for a given index.
- * 
- * \param id  the joystick index (in the [0..GE_MAX_DEVICES[ range)
- * 
- * \return the joystick virtual id if present, NULL otherwise.
- */
 int ginput_joystick_virtual_id(int id)
 {
   if (id >= 0 && id < GE_MAX_DEVICES)
@@ -344,11 +291,6 @@ int ginput_joystick_virtual_id(int id)
   return 0;
 }
 
-/*
- * \brief Set a joystick to the "used" state, so that a call to ginput_release_unused will keep it open.
- * 
- * \param id  the joystick index (in the [0..GE_MAX_DEVICES[ range)
- */
 void ginput_set_joystick_used(int id)
 {
   if (id >= 0 && id < GE_MAX_DEVICES)
@@ -357,18 +299,6 @@ void ginput_set_joystick_used(int id)
   }
 }
 
-/*
- * \brief Register a joystick to be emulated in software.
- * 
- * \remark This function has to be called before calling ginput_init.
- *
- * \param name      the name of the joystick to register.
- * \param haptic    the haptic capabilities (bitfield of GE_HapticType values).
- * \param haptic_cb the haptic callback.
- * 
- * \return the id of the joystick, that can be used to forge a GE_Event,
- *         or -1 if the library was already initialized
- */
 int ginput_register_joystick(const char* name, unsigned int effects, int (*haptic_cb)(const GE_Event * event))
 {
   if(initialized)
@@ -380,13 +310,6 @@ int ginput_register_joystick(const char* name, unsigned int effects, int (*hapti
   return ev_joystick_register(name, effects, haptic_cb);
 }
 
-/*
- * \brief Get the mouse virtual id for a given index.
- * 
- * \param id  the mouse index (in the [0..GE_MAX_DEVICES[ range)
- * 
- * \return the mouse virtual id if present, NULL otherwise.
- */
 int ginput_mouse_virtual_id(int id)
 {
   if (id >= 0 && id < GE_MAX_DEVICES)
@@ -396,13 +319,6 @@ int ginput_mouse_virtual_id(int id)
   return 0;
 }
 
-/*
- * \brief Get the keyboard virtual id for a given index.
- * 
- * \param id  the keyboard index (in the [0..GE_MAX_DEVICES[ range)
- * 
- * \return the keyboard virtual id if present, NULL otherwise.
- */
 int ginput_keyboard_virtual_id(int id)
 {
   if (id >= 0 && id < GE_MAX_DEVICES)
@@ -412,35 +328,16 @@ int ginput_keyboard_virtual_id(int id)
   return 0;
 }
 
-/*
- * \brief Get the mk mode.
- *
- * \return value GE_MK_MODE_MULTIPLE_INPUTS multiple mice and  multiple keyboards (default value),
- *               GE_MK_MODE_SINGLE_INPUT    single mouse and single keyboard
- */
 GE_MK_Mode ginput_get_mk_mode()
 {
   return mk_mode;
 }
 
-/*
- * \brief Set the mk mode.
- *
- * \param value GE_MK_MODE_MULTIPLE_INPUTS multiple mice and  multiple keyboards (default value),
- *              GE_MK_MODE_SINGLE_INPUT    single mouse and single keyboard
- */
 void ginput_set_mk_mode(GE_MK_Mode value)
 {
   mk_mode = value;
 }
 
-/*
- * \brief Returns the device id corresponding to a given event.
- * 
- * \param e  the event
- *
- * \return the device id (0 if the event is from a mouse or a keyboard and the mk mode is GE_MK_MODE_SINGLE_INPUT).
- */
 int ginput_get_device_id(GE_Event* e)
 {
   /*
@@ -471,37 +368,16 @@ int ginput_get_device_id(GE_Event* e)
   return device_id;
 }
 
-/*
- * \brief Push an event into the event queue.
- * 
- * \param event  the event
- *
- * \return 0 in case of success, -1 in case of error.
- */
 int ginput_queue_push(GE_Event *event)
 {
   return queue_push_event(event);
 }
 
-/*
- * \brief Return the haptic capabilities of a joystick.
- * 
- * \param id  the joystick index (in the [0..GE_MAX_DEVICES[ range)
- * 
- * \return the haptic capabilities (bitfield of GE_HapticType values) or -1 in case of error.
- */
 int ginput_joystick_get_haptic(int id)
 {
   return ev_joystick_get_haptic(id);
 }
 
-/*
- * \brief Set a joystick haptic effect.
- *
- * \param haptic the haptic event, with haptic.which the joystick index (in the [0..GE_MAX_DEVICES[ range).
- *
- * \return -1 in case of error, 0 otherwise
- */
 int ginput_joystick_set_haptic(const GE_Event * event)
 {
   return ev_joystick_set_haptic(event);
@@ -524,72 +400,32 @@ int ginput_joystick_get_usb_ids(int id, unsigned short * vendor, unsigned short 
 }
 #endif
 
-/*
- * \brief Process all events from non-asynchronous sources. \
- *        Poll all hidinput devices.
- */
 void ginput_periodic_task()
 {
   ev_sync_process();
   hidinput_poll();
 }
 
-/*
- * \brief Get all events from the event queue.
- * 
- * \param events  the buffer to store the events
- * \param numevents  the max number of events to retrieve
- * 
- * \return the number of retrieved events.
- */
 int ginput_queue_pop(GE_Event *events, int numevents)
 {
   return queue_pop_events(events, numevents);
 }
 
-/*
- * \brief Get the button name for a given button id.
- *
- * \param button  the button id
- *
- * \return the button name
- */
 const char* ginput_mouse_button_name(int button)
 {
   return get_chars_from_button(button);
 }
 
-/*
- * \brief Get the button id for a given button name.
- *
- * \param name  the button name
- *
- * \return the button id
- */
 int ginput_mouse_button_id(const char* name)
 {
   return get_mouse_event_id_from_buffer(name);
 }
 
-/*
- * \brief Get the key name for a given key id.
- *
- * \param key  the key id
- *
- * \return the key name
- */
 const char* ginput_key_name(uint16_t key)
 {
   return get_chars_from_key(key);
 }
 
-/*
- * \brief Get the key id for a given key name.
- *
- * \param name  the key name
- *
- * \return the key id
- */
 uint16_t ginput_key_id(const char* name)
 {
   return get_key_from_buffer(name);

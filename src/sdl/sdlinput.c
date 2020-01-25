@@ -288,6 +288,9 @@ static int sdlinput_js_init(const GPOLL_INTERFACE * poll_interface __attribute__
 
     if (js_init == 0) {
         if (mkb_init == 0) {
+            if (SDL_GetHint(SDL_HINT_TIMER_RESOLUTION) == NULL) {
+                SDL_SetHint(SDL_HINT_TIMER_RESOLUTION, "0");
+            }
             if (SDL_Init(0) < 0) {
                 PRINT_ERROR_SDL("SDL_Init");
                 return -1;
@@ -364,6 +367,9 @@ static int sdlinput_mkb_init(const GPOLL_INTERFACE * poll_interface __attribute_
 
     if (mkb_init == 0) {
         if (js_init == 0) {
+            if (SDL_GetHint(SDL_HINT_TIMER_RESOLUTION) == NULL) {
+                SDL_SetHint(SDL_HINT_TIMER_RESOLUTION, "0");
+            }
             if (SDL_Init(0) < 0) {
                 PRINT_ERROR_SDL("SDL_Init");
                 return -1;

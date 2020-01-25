@@ -82,6 +82,7 @@ struct joystick_device {
         GE_HapticType emulate_rumble;
         int ids[sizeof(effect_types) / sizeof(*effect_types)];
         int (*haptic_cb)(const GE_Event * event);
+        int hasSimpleRumble;
     } force_feedback;
     struct {
         int joystickHatButtonBaseIndex; // the base index of the generated hat buttons equals the number of physical buttons
@@ -333,6 +334,10 @@ static int sdlinput_js_init(const GPOLL_INTERFACE * poll_interface __attribute__
         open_haptic(device, joystick);
         if (controller != NULL) {
             device->controller = controller;
+            if (SDL_GameControllerRumble(controller, 0, 0, 0) == 0) {
+                device->force_feedback.effects |= GE_HAPTIC_RUMBLE;
+                device->force_feedback.hasSimpleRumble = 1;
+            }
         } else {
             device->joystick = joystick;
             // query hat info to convert hats to standard buttons
@@ -860,6 +865,15 @@ static int sdlinput_joystick_set_haptic(const GE_Event * event) {
             return -1;
         }
     }
+
+    if (event->type == GE_JOYRUMBLE && joystick->force_feedback.hasSimpleRumble) {
+        if (SDL_GameControllerRumble(joystick->controller, event->jrumble.strong, event->jrumble.weak, 0)) {
+            PRINT_ERROR_SDL("SDL_GameControllerRumble");
+            return -1;
+        }
+        return 0;
+    }
+
     int effect_id = -1;
     SDL_HapticEffect effect = { };
     unsigned int effects = joystick->force_feedback.effects;

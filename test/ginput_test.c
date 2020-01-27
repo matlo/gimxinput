@@ -21,6 +21,21 @@
 #include <gimxcommon/test/input.c>
 #include <gimxcommon/test/timer.c>
 
+#include <gimxcommon/include/gperf.h>
+
+#define SAMPLETYPE \
+    struct { \
+            gtime now; \
+            gtime delta; \
+        }
+
+#define NBSAMPLES 2500 // 10s with a period of 4ms
+
+#define SAMPLEPRINT(SAMPLE) \
+    printf("now = "GTIME_FS" delta = "GTIME_FS"\n", SAMPLE.now, SAMPLE.delta)
+
+static GPERF_INST(ginput_test, SAMPLETYPE, NBSAMPLES);
+
 #define PERIOD 10000//microseconds
 
 int mkb_select() {
@@ -60,6 +75,7 @@ static unsigned int periods = 0;
 static int quiet = 0;
 static int debug = 0;
 static int prio = 0;
+static int perf = 0;
 
 /*
  * Reads command-line arguments.
@@ -67,7 +83,7 @@ static int prio = 0;
 static int read_args(int argc, char* argv[]) {
 
   int opt;
-  while ((opt = getopt(argc, argv, "dn:pq")) != -1) {
+  while ((opt = getopt(argc, argv, "dn:pqs")) != -1) {
     switch (opt) {
     case 'd':
       debug = 1;
@@ -80,6 +96,9 @@ static int read_args(int argc, char* argv[]) {
       break;
     case 'q':
       quiet = 1;
+      break;
+    case 's':
+      perf = 1;
       break;
     default: /* '?' */
       usage();
@@ -138,11 +157,19 @@ int main(int argc __attribute__((unused)), char* argv[] __attribute__((unused)))
     exit(-1);
   }
 
-  while(!is_done())
+  while(!is_done() && gperf_ginput_test.count != NBSAMPLES)
   {
     gpoll();
 
+    if (perf) {
+      GPERF_START(ginput_test);
+    }
+
     ginput_periodic_task();
+
+    if (perf) {
+      GPERF_END(ginput_test);
+    }
 
     //do something periodically
 
@@ -166,6 +193,11 @@ int main(int argc __attribute__((unused)), char* argv[] __attribute__((unused)))
   ginput_quit();
 
   printf("Exiting\n");
+
+  if (perf) {
+    GPERF_SAMPLE_PRINT(ginput_test, SAMPLEPRINT);
+    GPERF_LOG(ginput_test);
+  }
 
   return 0;
 }

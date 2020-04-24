@@ -306,7 +306,6 @@ typedef enum {
        GE_JOYDAMPERFORCE,     /**< Joystick damper force */
        GE_JOYSINEFORCE,     /**< Joystick sine force */
        GE_QUIT,
-       GE_FOCUS_LOST,
 } GE_EventType;
 
 typedef struct GE_KeyboardEvent {
@@ -454,6 +453,8 @@ int ginput_init(const GPOLL_INTERFACE * poll_interface, unsigned char mkb_src, i
 
 /*
  * \brief Grab/Release the mouse cursor (Windows) or grab/release all keyboard and mouse event devices (Linux).
+ *
+ * \return 1 if mouse is grabbed, 0 otherwise
  */
 int ginput_grab_toggle();
 

@@ -118,11 +118,11 @@ void ev_joystick_close(int id) {
     jsource->close(id);
 }
 
-void ev_grab_input(int mode) {
+int ev_grab_input(int mode) {
 
-    CHECK_MKB_SOURCE();
+    CHECK_MKB_SOURCE(-1);
 
-    mkbsource->grab(mode);
+    return mkbsource->grab(mode);
 }
 
 void ev_quit(void) {

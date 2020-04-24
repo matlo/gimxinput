@@ -350,7 +350,7 @@ static void xinput_quit() {
  * Grab the pointer into the window.
  * This function retries until success or 500ms have elapsed.
  */
-static void xinput_grab(int mode __attribute__((unused))) {
+static int xinput_grab(int mode) {
 
     int i = 0;
     while (XGrabPointer(dpy, win, True, 0, GrabModeAsync, GrabModeAsync, win, None, CurrentTime) != GrabSuccess
@@ -358,6 +358,8 @@ static void xinput_grab(int mode __attribute__((unused))) {
         usleep(10000);
         ++i;
     }
+
+    return mode;
 }
 
 static char* get_name(unsigned char devtype, int index) {

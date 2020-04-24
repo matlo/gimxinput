@@ -16,6 +16,9 @@ LDLIBS += -lgimxlog
 LDFLAGS += -L../gimxhid
 LDLIBS += -lgimxhid
 
+LDFLAGS += -L../gimxtime
+LDLIBS += -lgimxtime
+
 ifeq ($(OS),Windows_NT)
 CFLAGS += `sdl2-config --cflags`
 LDLIBS += -lsetupapi -lws2_32

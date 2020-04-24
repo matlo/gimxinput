@@ -200,16 +200,8 @@ void ginput_release_unused()
 
 int ginput_grab_toggle()
 {
-  if (grab)
-  {
-    ev_grab_input(GE_GRAB_OFF);
-    grab = 0;
-  }
-  else
-  {
-    ev_grab_input(GE_GRAB_ON);
-    grab = 1;
-  }
+  grab = ev_grab_input(grab ? GE_GRAB_OFF : GE_GRAB_ON);
+
   return grab;
 }
 

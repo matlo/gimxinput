@@ -371,7 +371,7 @@ static void mkb_quit() {
     }
 }
 
-static void mkb_grab(int mode) {
+static int mkb_grab(int mode) {
 
     int one = 1;
     int* enable = NULL;
@@ -383,6 +383,8 @@ static void mkb_grab(int mode) {
         ioctl(device->fd, EVIOCGRAB, enable);
         device = device->next;
     }
+
+    return mode;
 }
 
 static int mkb_get_src() {

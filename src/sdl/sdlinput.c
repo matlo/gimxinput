@@ -990,9 +990,13 @@ static int sdlinput_joystick_get_usb_ids(int joystick, unsigned short * vendor, 
     return 0;
 }
 
-static void sdlinput_grab(int mode) {
+static int sdlinput_grab(int mode) {
 
-    SDL_SetRelativeMouseMode((mode == GE_GRAB_ON) ? SDL_TRUE : SDL_FALSE);
+    if (SDL_SetRelativeMouseMode((mode == GE_GRAB_ON) ? SDL_TRUE : SDL_FALSE)) {
+        PRINT_ERROR_SDL("SDL_SetRelativeMouseMode");
+    }
+
+    return mode;
 }
 
 static int sdlinput_get_src() {

@@ -73,9 +73,13 @@ const char* ev_keyboard_name(int id)
   return NULL;
 }
 
-void ev_grab_input(int mode)
+int ev_grab_input(int mode)
 {
   sdlinput_grab(mode);
+
+  // TODO capture mouse if mode is GE_GRAB_ON, release mouse otherwise
+
+  return 0;
 }
 
 void ev_sync_process()

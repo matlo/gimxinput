@@ -21,7 +21,7 @@
 struct mkb_source {
     int (* init)(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Event*));
     int (* get_src)();
-    void (* grab)(int mode);
+    int (* grab)(int mode);
     const char * (* get_mouse_name)(int id);
     const char * (* get_keyboard_name)(int id);
     int (* sync_process)();
@@ -63,7 +63,7 @@ void * ev_joystick_get_hid(int joystick);
 int ev_joystick_get_usb_ids(int joystick, unsigned short * vendor, unsigned short * product);
 #endif
 
-void ev_grab_input(int);
+int ev_grab_input(int);
 void ev_pump_events();
 void ev_sync_process();
 

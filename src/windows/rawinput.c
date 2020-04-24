@@ -84,10 +84,10 @@ static int (*event_callback)(GE_Event*) = NULL;
 static int pollres = 0;
 
 #define PROCESS_EVENT(EVT) \
-    { \
+    do { \
       int res = event_callback(&EVT); \
       pollres |= res; \
-    }
+    } while (0)
 
 static void rawinput_handler(const RAWINPUT * raw, UINT align) {
 
@@ -116,12 +116,12 @@ static void rawinput_handler(const RAWINPUT * raw, UINT align) {
           if (mouse->lLastX != 0) {
             event.motion.xrel = mouse->lLastX;
             event.motion.yrel = 0;
-            PROCESS_EVENT(event)
+            PROCESS_EVENT(event);
           }
           if (mouse->lLastY != 0) {
             event.motion.xrel = 0;
             event.motion.yrel = mouse->lLastY;
-            PROCESS_EVENT(event)
+            PROCESS_EVENT(event);
           }
       }
 
@@ -130,13 +130,13 @@ static void rawinput_handler(const RAWINPUT * raw, UINT align) {
           event.type = GE_MOUSEBUTTONDOWN; \
           event.button.which = device; \
           event.button.button = BUTTON; \
-          PROCESS_EVENT(event) \
+          PROCESS_EVENT(event); \
         } \
         if (mouse->usButtonFlags & RI_MOUSE_BUTTON_##ID##_UP) { \
           event.type = GE_MOUSEBUTTONUP; \
           event.button.which = device; \
           event.button.button = BUTTON; \
-          PROCESS_EVENT(event) \
+          PROCESS_EVENT(event); \
         } \
       }
 
@@ -154,9 +154,9 @@ static void rawinput_handler(const RAWINPUT * raw, UINT align) {
             event.type = GE_MOUSEBUTTONDOWN; \
             event.button.which = device; \
             event.button.button = ((SHORT) mouse->usButtonData) > 0 ? BUTTON_PLUS : BUTTON_MINUS; \
-            PROCESS_EVENT(event) \
+            PROCESS_EVENT(event); \
             event.type = GE_MOUSEBUTTONUP; \
-            PROCESS_EVENT(event) \
+            PROCESS_EVENT(event); \
           } \
         } \
       }\
@@ -198,7 +198,7 @@ static void rawinput_handler(const RAWINPUT * raw, UINT align) {
       } else {
         event.key.type = GE_KEYDOWN;
       }
-      PROCESS_EVENT(event)
+      PROCESS_EVENT(event);
 
     } else {
       return;
@@ -264,10 +264,6 @@ static LRESULT CALLBACK RawWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lP
     if (Msg == WM_INPUT) {
         if(!buff) {
             wminput_handler(wParam, lParam);
-        }
-    } else if (Msg == WM_ACTIVATE) {
-        if (wParam == WA_INACTIVE) {
-            pollres = 1;
         }
     }
 

@@ -380,71 +380,71 @@ void ev_sync_process()
   // on Windows mkbsource->sync_process is either the rawinput callback
   // or NULL (sdlinput)
 
-  // retrieve key states
-
-  uint16_t lwin = GetAsyncKeyState(VK_LWIN);
-  uint16_t rwin = GetAsyncKeyState(VK_RWIN);
-  uint16_t lalt = GetAsyncKeyState(VK_LMENU);
-  uint16_t ralt = GetAsyncKeyState(VK_RMENU);
-  uint16_t lctrl = GetAsyncKeyState(VK_LCONTROL);
-  uint16_t rctrl = GetAsyncKeyState(VK_RCONTROL);
-
-  int escape = 0;
-
-  // escape windows keys to prevent Search UI to take focus
-
-  if (IS_KEY_DOWN(lwin) || IS_KEY_DOWN(rwin))
-  {
-    escape = 1;
-  }
-
-  INPUT inputs[8] = {};
-  unsigned int input = 0;
-
-  if (escape)
-  {
-    ADD_KEY(VK_ESCAPE, 0);
-    ADD_KEY(VK_ESCAPE, KEYEVENTF_KEYUP);
-  }
-
-  // release keys used in windows shortcuts
-
-  if (IS_KEY_DOWN(lwin))
-  {
-    ADD_KEY(VK_LWIN, KEYEVENTF_KEYUP);
-  }
-
-  if (IS_KEY_DOWN(rwin))
-  {
-    ADD_KEY(VK_RWIN, KEYEVENTF_KEYUP);
-  }
-
-  if (IS_KEY_DOWN(lalt))
-  {
-    ADD_KEY(VK_LMENU, KEYEVENTF_KEYUP);
-  }
-
-  if (IS_KEY_DOWN(ralt))
-  {
-    ADD_KEY(VK_RMENU, KEYEVENTF_KEYUP);
-  }
-
-  if (IS_KEY_DOWN(lctrl))
-  {
-    ADD_KEY(VK_LCONTROL, KEYEVENTF_KEYUP);
-  }
-
-  if (IS_KEY_DOWN(rctrl))
-  {
-    ADD_KEY(VK_RCONTROL, KEYEVENTF_KEYUP);
-  }
-
-  // if you add more entries to inputs, make sure not to increase its size!
-
-  SendInput(input, inputs, sizeof(*inputs));
-
   if (capture.mode == GE_GRAB_ON)
   {
+    // retrieve key states
+
+    uint16_t lwin = GetAsyncKeyState(VK_LWIN);
+    uint16_t rwin = GetAsyncKeyState(VK_RWIN);
+    uint16_t lalt = GetAsyncKeyState(VK_LMENU);
+    uint16_t ralt = GetAsyncKeyState(VK_RMENU);
+    uint16_t lctrl = GetAsyncKeyState(VK_LCONTROL);
+    uint16_t rctrl = GetAsyncKeyState(VK_RCONTROL);
+
+    int escape = 0;
+
+    // escape windows keys to prevent Search UI to take focus
+
+    if (IS_KEY_DOWN(lwin) || IS_KEY_DOWN(rwin))
+    {
+      escape = 1;
+    }
+
+    INPUT inputs[8] = {};
+    unsigned int input = 0;
+
+    if (escape)
+    {
+      ADD_KEY(VK_ESCAPE, 0);
+      ADD_KEY(VK_ESCAPE, KEYEVENTF_KEYUP);
+    }
+
+    // release keys used in windows shortcuts
+
+    if (IS_KEY_DOWN(lwin))
+    {
+      ADD_KEY(VK_LWIN, KEYEVENTF_KEYUP);
+    }
+
+    if (IS_KEY_DOWN(rwin))
+    {
+      ADD_KEY(VK_RWIN, KEYEVENTF_KEYUP);
+    }
+
+    if (IS_KEY_DOWN(lalt))
+    {
+      ADD_KEY(VK_LMENU, KEYEVENTF_KEYUP);
+    }
+
+    if (IS_KEY_DOWN(ralt))
+    {
+      ADD_KEY(VK_RMENU, KEYEVENTF_KEYUP);
+    }
+
+    if (IS_KEY_DOWN(lctrl))
+    {
+      ADD_KEY(VK_LCONTROL, KEYEVENTF_KEYUP);
+    }
+
+    if (IS_KEY_DOWN(rctrl))
+    {
+      ADD_KEY(VK_RCONTROL, KEYEVENTF_KEYUP);
+    }
+
+    // if you add more entries to inputs, make sure not to increase its size!
+
+    SendInput(input, inputs, sizeof(*inputs));
+
     // check if mouse capture is still valid as it may fail in a few cases
 
     if (capture.status)

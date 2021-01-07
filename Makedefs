@@ -21,8 +21,7 @@ NAME=$(shell basename "$(shell pwd)")
 
 LIBNAME=lib$(NAME)
 
-CFLAGS += -DGLOG_NAME=$(NAME)
-CXXFLAGS += -DGLOG_NAME=$(NAME)
+CPPFLAGS += -D__USE_MINGW_ANSI_STDIO=0 -DGLOG_NAME=$(NAME)
 
 ifneq ($(OS),Windows_NT)
 LIB=$(LIBNAME).so

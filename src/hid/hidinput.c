@@ -151,7 +151,6 @@ int hidinput_init(const GPOLL_INTERFACE * poll_interface, int(*callback)(GE_Even
                             };
                             if (ghid_register(device->hid, device, &callbacks) < 0) {
                                 close_device(device);
-                                free(device);
                             } else {
                                 GLIST_ADD(hidinput_devices, device);
                             }

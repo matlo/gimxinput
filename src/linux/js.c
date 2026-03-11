@@ -8,7 +8,8 @@
 #include <termios.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <linux/joystick.h>
+#include <sys/ioctl.h>
+#include <linux/input.h>
 #include <string.h>
 #include <stdlib.h>
 #include <dirent.h>
@@ -24,8 +25,6 @@
 GLOG_GET(GLOG_NAME)
 
 static int debug = 0;
-
-#define AXMAP_SIZE (ABS_MAX + 1)
 
 static GPOLL_REMOVE_SOURCE fp_remove = NULL;
 
@@ -48,7 +47,6 @@ struct joystick_device {
     struct {
         unsigned short button_nb; // the base index of the generated hat buttons equals the number of physical buttons
         int hat_value[ABS_HAT3Y - ABS_HAT0X]; // the current hat values
-        uint8_t ax_map[AXMAP_SIZE]; // the axis map
     } hat_info; // allows to convert hat axes to buttons
     struct {
         int fd; // the event device, or -1 in case the joystick was created using the js_add() function
@@ -106,33 +104,52 @@ int get_effect_id(struct joystick_device * device, GE_HapticType type) {
 
 static int (*event_callback)(GE_Event*) = NULL;
 
-static void js_process_event(struct joystick_device * device, struct js_event* je) {
+static int scale_axis(int fd, int axis_code, int raw_value) {
+    struct input_absinfo absinfo;
+    if (ioctl(fd, EVIOCGABS(axis_code), &absinfo) < 0) {
+        return raw_value;
+    }
+    int min_val = absinfo.minimum;
+    int max_val = absinfo.maximum;
+    int center = (min_val + max_val) / 2;
+    int half_range = (max_val - min_val) / 2;
+    if (half_range <= 0) {
+        return 0;
+    }
+    int scaled = (raw_value - center) * 32767 / half_range;
+    if (scaled < -32767) scaled = -32767;
+    if (scaled > 32767) scaled = 32767;
+    return scaled;
+}
+
+static void evdev_process_event(struct joystick_device * device, struct input_event * ie) {
     GE_Event evt = { };
 
-    if (je->type & JS_EVENT_INIT) {
-        return;
-    }
-
-    if (je->type & JS_EVENT_BUTTON) {
-        evt.type = je->value ? GE_JOYBUTTONDOWN : GE_JOYBUTTONUP;
+    switch (ie->type) {
+    case EV_KEY:
+        if (ie->value > 1) {
+            return;
+        }
+        evt.type = ie->value ? GE_JOYBUTTONDOWN : GE_JOYBUTTONUP;
         evt.jbutton.which = device->id;
-        evt.jbutton.button = je->number;
-    } else if (je->type & JS_EVENT_AXIS) {
-        int axis = device->hat_info.ax_map[je->number];
+        evt.jbutton.button = ie->code;
+        break;
+
+    case EV_ABS: {
+        int axis = ie->code;
         if (axis >= ABS_HAT0X && axis <= ABS_HAT3Y) {
-            // convert hat axes to buttons
-            evt.type = je->value ? GE_JOYBUTTONDOWN : GE_JOYBUTTONUP;
-            int button;
+            /* convert hat axes to buttons */
+            evt.type = ie->value ? GE_JOYBUTTONDOWN : GE_JOYBUTTONUP;
             int value;
             axis -= ABS_HAT0X;
-            if (!je->value) {
+            if (!ie->value) {
                 value = device->hat_info.hat_value[axis];
                 device->hat_info.hat_value[axis] = 0;
             } else {
-                value = je->value / 32767;
+                value = ie->value > 0 ? 1 : -1;
                 device->hat_info.hat_value[axis] = value;
             }
-            button = axis + value + 2 * (axis / 2);
+            int button = axis + value + 2 * (axis / 2);
             if (button < 4 * (axis / 2)) {
                 button += 4;
             }
@@ -141,23 +158,19 @@ static void js_process_event(struct joystick_device * device, struct js_event* j
         } else {
             evt.type = GE_JOYAXISMOTION;
             evt.jaxis.which = device->id;
-            evt.jaxis.axis = je->number;
-            evt.jaxis.value = je->value;
-            /*
-             * Ugly patch for the sixaxis.
-             */
-            if (device->isSixaxis && evt.jaxis.axis > 3 && evt.jaxis.axis < 23) {
-                evt.jaxis.value = (evt.jaxis.value + 32767) / 2;
-            }
+            evt.jaxis.axis = axis;
+            evt.jaxis.value = scale_axis(device->fd, axis, ie->value);
         }
+        break;
     }
 
-    /*
-     * Process evt.
-     */
+    default:
+        return;
+    }
+
     if (evt.type != GE_NOEVENT) {
         eprintf("event from joystick: %s\n", device->name);
-        eprintf("type: %d number: %d value: %d\n", je->type, je->number, je->value);
+        eprintf("type: %d code: %d value: %d\n", ie->type, ie->code, ie->value);
         event_callback(&evt);
     }
 }
@@ -166,13 +179,13 @@ static int js_process_events(void * user) {
 
     struct joystick_device * device = (struct joystick_device *) user;
 
-    static struct js_event je[MAX_EVENTS];
+    static struct input_event ie[MAX_EVENTS];
 
-    int res = read(device->fd, je, sizeof(je));
+    int res = read(device->fd, ie, sizeof(ie));
     if (res > 0) {
         unsigned int j;
-        for (j = 0; j < res / sizeof(*je); ++j) {
-            js_process_event(device, je + j);
+        for (j = 0; j < (unsigned int)res / sizeof(*ie); ++j) {
+            evdev_process_event(device, ie + j);
         }
     } else if (res < 0 && errno != EAGAIN) {
         js_close_internal(device);
@@ -182,6 +195,7 @@ static int js_process_events(void * user) {
 }
 
 #define DEV_INPUT "/dev/input"
+#define SYS_INPUT "/sys/class/input"
 #define JS_DEV_NAME "js%u"
 #define EV_DEV_NAME "event%u"
 
@@ -194,19 +208,58 @@ static int js_process_events(void * user) {
 static int is_js_device(const struct dirent *dir) {
 
     unsigned int num;
-    if (dir->d_type == DT_CHR && sscanf(dir->d_name, JS_DEV_NAME, &num) == 1 && num < 256) {
+    if (dir->d_type == DT_CHR && sscanf(dir->d_name, JS_DEV_NAME, &num) == 1 && num < 4096) {
         return 1;
     }
     return 0;
 }
 
-static int is_event_dir(const struct dirent *dir) {
+static int is_event_device(const struct dirent *dir) {
 
     unsigned int num;
-    if (dir->d_type == DT_DIR && sscanf(dir->d_name, EV_DEV_NAME, &num) == 1 && num < 256) {
+    if (dir->d_type == DT_DIR && sscanf(dir->d_name, EV_DEV_NAME, &num) == 1 && num < 4096) {
         return 1;
     }
     return 0;
+}
+
+/* Accept DT_DIR, DT_LNK, DT_UNKNOWN for event entries in sysfs (symlinks common) */
+static int is_event_in_device(const struct dirent *dir) {
+    unsigned int num;
+    if ((dir->d_type == DT_DIR || dir->d_type == DT_LNK || dir->d_type == DT_UNKNOWN) &&
+        sscanf(dir->d_name, EV_DEV_NAME, &num) == 1 && num < 4096) {
+        return 1;
+    }
+    return 0;
+}
+
+/* Check if event_name (e.g. "event5") is under any js device's device directory */
+static int is_event_under_js(const char * event_name) {
+
+    struct dirent **namelist_js;
+    int n_js = scandir(SYS_INPUT, &namelist_js, is_js_device, alphasort);
+    if (n_js < 0) {
+        return 0;
+    }
+    int found = 0;
+    for (int i = 0; i < n_js && !found; ++i) {
+        char dir_event[strlen(SYS_INPUT) + 1 + strlen(namelist_js[i]->d_name) + strlen("/device/") + 1];
+        snprintf(dir_event, sizeof(dir_event), "%s/%s/device/", SYS_INPUT, namelist_js[i]->d_name);
+        struct dirent **namelist_ev;
+        int n_ev = scandir(dir_event, &namelist_ev, is_event_in_device, alphasort);
+        if (n_ev >= 0) {
+            for (int j = 0; j < n_ev && !found; ++j) {
+                if (strcmp(namelist_ev[j]->d_name, event_name) == 0) {
+                    found = 1;
+                }
+                free(namelist_ev[j]);
+            }
+            free(namelist_ev);
+        }
+        free(namelist_js[i]);
+    }
+    free(namelist_js);
+    return found;
 }
 
 static int open_evdev(const char * js_name) {
@@ -216,24 +269,49 @@ static int open_evdev(const char * js_name) {
     int j;
     int fd_ev = -1;
 
-    char dir_event[strlen("/sys/class/input/") + strlen(js_name) + strlen("/device/") + 1];
-    snprintf(dir_event, sizeof(dir_event), "/sys/class/input/%s/device/", js_name);
+    char dir_event[strlen(SYS_INPUT) + 1 + strlen(js_name) + strlen("/device/") + 1];
+    snprintf(dir_event, sizeof(dir_event), "%s/%s/device/", SYS_INPUT, js_name);
 
-    // scan /sys/class/input/jsX/device/ for eventY devices
-    n_ev = scandir(dir_event, &namelist_ev, is_event_dir, alphasort);
+    n_ev = scandir(dir_event, &namelist_ev, is_event_in_device, alphasort);
     if (n_ev >= 0) {
         for (j = 0; j < n_ev; ++j) {
             if (fd_ev == -1) {
                 char event[strlen(DEV_INPUT) + sizeof('/') + strlen(namelist_ev[j]->d_name) + 1];
                 snprintf(event, sizeof(event), "%s/%s", DEV_INPUT, namelist_ev[j]->d_name);
-                // open the eventY device
                 fd_ev = open(event, O_RDWR | O_NONBLOCK);
+                if (fd_ev < 0 && errno == EACCES) {
+                    fd_ev = open(event, O_RDONLY | O_NONBLOCK);
+                }
             }
             free(namelist_ev[j]);
         }
         free(namelist_ev);
     }
     return fd_ev;
+}
+
+static unsigned short get_evdev_button_count(int fd) {
+    unsigned long key_bits[32];
+    memset(key_bits, 0, sizeof(key_bits));
+    if (ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(key_bits)), key_bits) < 0) {
+        return 0;
+    }
+    unsigned short count = 0;
+    for (unsigned int i = BTN_JOYSTICK; i <= BTN_JOYSTICK + 0xff && i < BITS_PER_LONG * 32; ++i) {
+        if (test_bit(i, key_bits)) {
+            count++;
+        }
+    }
+    return count;
+}
+
+static int evdev_has_abs(int fd) {
+    unsigned long ev_bits[4];
+    memset(ev_bits, 0, sizeof(ev_bits));
+    if (ioctl(fd, EVIOCGBIT(0, sizeof(ev_bits)), ev_bits) < 0) {
+        return 0;
+    }
+    return test_bit(EV_ABS, ev_bits) ? 1 : 0;
 }
 
 static void * get_hid(int fd_ev) {
@@ -299,11 +377,35 @@ int isSixaxis(const char * name) {
     return 0;
 }
 
+static int add_joystick_device(const GPOLL_INTERFACE * poll_interface, int fd_ev, const char * name) {
+
+    if (j_num >= (int)(sizeof(indexToJoystick) / sizeof(*indexToJoystick))) {
+        return -1;
+    }
+    struct joystick_device * device = calloc(1, sizeof(*device));
+    if (device == NULL) {
+        return -1;
+    }
+    device->id = j_num;
+    indexToJoystick[j_num] = device;
+    device->name = strdup(name);
+    device->isSixaxis = isSixaxis(name);
+    device->fd = fd_ev;
+    device->force_feedback.fd = -1;
+    device->hat_info.button_nb = get_evdev_button_count(fd_ev);
+    device->hid = get_hid(fd_ev);
+    open_haptic(device, fd_ev);
+    GPOLL_CALLBACKS callbacks = { .fp_read = js_process_events, .fp_write = NULL, .fp_close = js_close_internal };
+    poll_interface->fp_register(device->fd, device, &callbacks);
+    GLIST_ADD(js_devices, device);
+    j_num++;
+    return 0;
+}
+
 static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Event*)) {
 
     int ret = 0;
     int i;
-    int fd_js;
     char name[1024] = { 0 };
 
     struct dirent **namelist_js;
@@ -327,72 +429,21 @@ static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Ev
     event_callback = callback;
     fp_remove = poll_interface->fp_remove;
 
-    // scan /dev/input for jsX devices
+    /* Phase 1: js-based discovery - resolve event device via sysfs, use evdev for input */
     n_js = scandir(DEV_INPUT, &namelist_js, is_js_device, alphasort);
     if (n_js >= 0) {
         for (i = 0; i < n_js; ++i) {
-#define JSINIT_ERROR() \
-      close(fd_js); \
-      free(namelist_js[i]); \
-      continue;
-
-            if (j_num == sizeof(indexToJoystick) / sizeof(*indexToJoystick)) {
-                PRINT_ERROR_OTHER("cannot add other joysticks: max device number reached");
+            int fd_ev = open_evdev(namelist_js[i]->d_name);
+            if (fd_ev < 0) {
                 free(namelist_js[i]);
                 continue;
             }
-
-            char js_file[strlen(DEV_INPUT) + sizeof('/') + strlen(namelist_js[i]->d_name) + 1];
-            snprintf(js_file, sizeof(js_file), "%s/%s", DEV_INPUT, namelist_js[i]->d_name);
-
-            // open the jsX device
-            fd_js = open(js_file, O_RDONLY | O_NONBLOCK);
-            if (fd_js != -1) {
-                // get the device name
-                if (ioctl(fd_js, JSIOCGNAME(sizeof(name) - 1), name) < 0) {
-                    PRINT_ERROR_ERRNO("ioctl EVIOCGNAME");
-                    JSINIT_ERROR()
-                }
-                // get the number of buttons and the axis map, to allow converting hat axes to buttons
-                unsigned char buttons;
-                if (ioctl(fd_js, JSIOCGBUTTONS, &buttons) < 0) {
-                    JSINIT_ERROR()
-                }
-                uint8_t ax_map[AXMAP_SIZE] = {};
-                if (ioctl(fd_js, JSIOCGAXMAP, &ax_map) < 0) {
-                    JSINIT_ERROR()
-                }
-                struct joystick_device * device = calloc(1, sizeof(*device));
-                if (device == NULL) {
-                    PRINT_ERROR_ALLOC_FAILED("calloc");
-                    JSINIT_ERROR()
-                }
-                device->id = j_num;
-                indexToJoystick[j_num] = device;
-                device->name = strdup(name);
-                device->isSixaxis = isSixaxis(name);
-                device->fd = fd_js;
-                device->force_feedback.fd = -1;
-                device->hat_info.button_nb = buttons;
-                memcpy(device->hat_info.ax_map, ax_map, sizeof(device->hat_info.ax_map));
-                GPOLL_CALLBACKS callbacks = { .fp_read = js_process_events, .fp_write = NULL, .fp_close =
-                        js_close_internal };
-                poll_interface->fp_register(device->fd, device, &callbacks);
-                int fd_ev = open_evdev(namelist_js[i]->d_name);
-                if (fd_ev >= 0) {
-                    device->hid = get_hid(fd_ev);
-                    if (open_haptic(device, fd_ev) == -1) {
-                        close(fd_ev); //no need to keep it opened
-                    }
-                }
-                GLIST_ADD(js_devices, device);
-                j_num++;
-            } else {
-                if (GLOG_LEVEL(GLOG_NAME,ERROR)) {
-                    fprintf(stderr, "%s:%d %s: opening %s failed with error: %m\n", __FILE__, __LINE__, __func__, js_file);
-                }
+            if (ioctl(fd_ev, EVIOCGNAME(sizeof(name) - 1), name) < 0) {
+                name[0] = '\0';
             }
-
+            if (add_joystick_device(poll_interface, fd_ev, name[0] ? name : namelist_js[i]->d_name) < 0) {
+                close(fd_ev);
+            }
             free(namelist_js[i]);
         }
         free(namelist_js);
@@ -401,6 +452,41 @@ static int js_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_Ev
             fprintf(stderr, "can't scan directory %s: %s\n", DEV_INPUT, strerror(errno));
         }
         ret = -1;
+    }
+
+    /* Phase 2: event fallback - add EV_ABS devices not under any js (e.g. event-only gamepads) */
+    struct dirent **namelist_ev;
+    int n_ev = scandir(SYS_INPUT, &namelist_ev, is_event_device, alphasort);
+    if (n_ev >= 0) {
+        for (i = 0; i < n_ev; ++i) {
+            if (is_event_under_js(namelist_ev[i]->d_name)) {
+                free(namelist_ev[i]);
+                continue;
+            }
+            char event_path[strlen(DEV_INPUT) + sizeof('/') + strlen(namelist_ev[i]->d_name) + 1];
+            snprintf(event_path, sizeof(event_path), "%s/%s", DEV_INPUT, namelist_ev[i]->d_name);
+            int fd_ev = open(event_path, O_RDWR | O_NONBLOCK);
+            if (fd_ev < 0 && errno == EACCES) {
+                fd_ev = open(event_path, O_RDONLY | O_NONBLOCK);
+            }
+            if (fd_ev < 0) {
+                free(namelist_ev[i]);
+                continue;
+            }
+            if (!evdev_has_abs(fd_ev)) {
+                close(fd_ev);
+                free(namelist_ev[i]);
+                continue;
+            }
+            if (ioctl(fd_ev, EVIOCGNAME(sizeof(name) - 1), name) < 0) {
+                name[0] = '\0';
+            }
+            if (add_joystick_device(poll_interface, fd_ev, name[0] ? name : namelist_ev[i]->d_name) < 0) {
+                close(fd_ev);
+            }
+            free(namelist_ev[i]);
+        }
+        free(namelist_ev);
     }
 
     return ret;
@@ -517,13 +603,17 @@ static int js_close_internal(void * user) {
 
     free(device->name);
 
-    if (device->fd >= 0) {
-        fp_remove(device->fd);
-        close(device->fd);
+    int fd_main = device->fd;
+    int fd_ff = device->force_feedback.fd;
+    if (fd_main >= 0) {
+        fp_remove(fd_main);
+        close(fd_main);
+        device->fd = -1;
     }
-    if (device->force_feedback.fd >= 0) {
-        close(device->force_feedback.fd);
+    if (fd_ff >= 0 && fd_ff != fd_main) {
+        close(fd_ff);
     }
+    device->force_feedback.fd = -1;
 
     indexToJoystick[device->id] = NULL;
 

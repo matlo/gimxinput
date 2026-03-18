@@ -18,6 +18,7 @@
 #include <gimxcommon/include/glist.h>
 #include <gimxlog/include/glog.h>
 #include "../events.h"
+#include "shmmouse.h"
 
 #define eprintf(...) if(debug) printf(__VA_ARGS__)
 
@@ -29,7 +30,8 @@ static int debug = 0;
 
 #define DEVTYPE_KEYBOARD 0x01
 #define DEVTYPE_MOUSE    0x02
-#define DEVTYPE_NB       2
+#define DEVTYPE_SHM_MOUSE   0x03
+#define DEVTYPE_NB       3
 
 static GPOLL_REMOVE_SOURCE fp_remove = NULL;
 
@@ -39,6 +41,7 @@ struct mkb_device
   int mouse;
   int keyboard;
   char* name;
+  int devtype;
   GLIST_LINK(struct mkb_device);
 };
 
@@ -51,8 +54,14 @@ static int mkb_close_device(void * user) {
 
     struct mkb_device * device = (struct mkb_device *) user;
 
-    free(device->name);
 
+    if (device->devtype == DEVTYPE_SHM_MOUSE){
+        fp_remove(device->fd);
+        shminput_close(user);
+        device->fd = -1; // stops this from running hidclose
+    }
+    else
+    free(device->name);
     if (device->fd >= 0) {
         if (grab) {
             ioctl(device->fd, EVIOCGRAB, (void *) 0);
@@ -302,8 +311,11 @@ static int mkb_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_E
                         if (grab) {
                             ioctl(device->fd, EVIOCGRAB, (void *) 1);
                         }
-                        GPOLL_CALLBACKS callbacks = { .fp_read = mkb_process_events, .fp_write = NULL, .fp_close =
-                                mkb_close_device };
+                        GPOLL_CALLBACKS callbacks = { 
+                            .fp_read = mkb_process_events, 
+                            .fp_write = NULL, 
+                            .fp_close = mkb_close_device 
+                            };
                         poll_interface->fp_register(device->fd, device, &callbacks);
                         GLIST_ADD(mkb_devices, device);
                     } else {
@@ -327,6 +339,18 @@ static int mkb_init(const GPOLL_INTERFACE * poll_interface, int (*callback)(GE_E
         PRINT_ERROR_ERRNO("scandir");
         ret = -1;
     }
+    // create shm mouse
+    struct mkb_device * device = calloc(1, sizeof(*device));
+    device->mouse = m_num;
+    m_num++;
+    device->devtype = DEVTYPE_SHM_MOUSE;
+    ++fd;
+    device->fd = fd;
+    device->name = "SHM Mouse";
+    device->keyboard = -1;
+    if (shminput_init(poll_interface, callback, device->mouse, device->fd)==0)
+        GLIST_ADD(mkb_devices, device);
+
 
     return ret;
 }
@@ -337,6 +361,7 @@ static char* mkb_get_name(unsigned char devtype, int index) {
     while (device != GLIST_END(mkb_devices)) {
         switch(devtype) {
         case DEVTYPE_MOUSE:
+        case DEVTYPE_SHM_MOUSE:
             if (device->mouse == index) {
                 return device->name;
             }
@@ -380,6 +405,11 @@ static int mkb_grab(int mode) {
     }
     struct mkb_device * device = GLIST_BEGIN(mkb_devices);
     while (device != GLIST_END(mkb_devices)) {
+        if (device->devtype == DEVTYPE_SHM_MOUSE)
+        {
+            shminput_grab(mode);
+        }
+        else
         ioctl(device->fd, EVIOCGRAB, enable);
         device = device->next;
     }
